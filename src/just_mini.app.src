@@ -1,0 +1,13 @@
+{application, just_mini,
+ [{description, "Just3 Engine - mini version"},
+  {vsn, "0.0.1"},
+  {applications, [kernel,
+                  stdlib,
+                  mnesia,
+                  snmp,
+                  os_mon,
+                  common_lib,
+                  amqp_client,
+                  gproc,
+                  lager]},
+  {mod, {just_app, []}}]}.

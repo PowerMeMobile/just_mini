@@ -1,0 +1,312 @@
+JUST-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    enterprises, OBJECT-TYPE, IpAddress
+        FROM SNMPv2-SMI
+    DisplayString, RowStatus
+        FROM SNMPv2-TC
+    ;
+
+powerMeMobile OBJECT IDENTIFIER ::= { enterprises 20789 }
+just          OBJECT IDENTIFIER ::= { powerMeMobile 3 }
+
+justObjects   OBJECT IDENTIFIER ::= { just 1 }
+justVariables OBJECT IDENTIFIER ::= { justObjects 1 }
+justTables    OBJECT IDENTIFIER ::= { justObjects 2 }
+
+-- Tables
+
+gateways    OBJECT IDENTIFIER ::= { justTables 1 }
+settings    OBJECT IDENTIFIER ::= { justTables 2 }
+connections OBJECT IDENTIFIER ::= { justTables 3 }
+customers   OBJECT IDENTIFIER ::= { justTables 4 }
+
+-- Gateways
+
+gatewaysTable OBJECT-TYPE
+    SYNTAX       SEQUENCE OF GatewaysEntry
+    ACCESS       not-accessible
+    STATUS       mandatory
+    DESCRIPTION
+        "A table with all the gateways."
+    ::= { gateways 1 }
+
+gatewaysEntry OBJECT-TYPE
+    SYNTAX       GatewaysEntry
+    ACCESS       not-accessible
+    STATUS       mandatory
+    DESCRIPTION
+        "A conceptual row in the gatewaysTable."
+    INDEX        { gtwUUID }
+    ::= { gatewaysTable 1 }
+
+GatewaysEntry ::= SEQUENCE {
+    gtwUUID   DisplayString (SIZE (36)),
+    gtwName   DisplayString,
+    gtwRPS    INTEGER (1..65535),
+    gtwStatus RowStatus
+}
+
+gtwUUID OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (36))
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION
+        "UUID of the gateway."
+    ::= { gatewaysEntry 1 }
+
+gtwName OBJECT-TYPE
+    SYNTAX      DisplayString
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "Name of the gateway."
+    ::= { gatewaysEntry 2 }
+
+gtwRPS OBJECT-TYPE
+    SYNTAX      INTEGER (1..65535)
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "Gateway's maximum Requests Per Second (per connection)."
+    ::= { gatewaysEntry 3 }
+
+gtwStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "Status of this conceptual row."
+    ::= { gatewaysEntry 4 }
+
+-- Settings
+
+settingsTable OBJECT-TYPE
+    SYNTAX       SEQUENCE OF SettingsEntry
+    ACCESS       not-accessible
+    STATUS       mandatory
+    DESCRIPTION
+        "A table with all the gateways' settings."
+    ::= { settings 1 }
+
+settingsEntry OBJECT-TYPE
+    SYNTAX       SettingsEntry
+    ACCESS       not-accessible
+    STATUS       mandatory
+    DESCRIPTION
+        "A conceptual row in the settingsTable."
+    INDEX        { gtwUUID, stsName }
+    ::= { settingsTable 1 }
+
+SettingsEntry ::= SEQUENCE {
+    stsName   DisplayString,
+    stsValue  DisplayString,
+    stsStatus RowStatus
+}
+
+stsName OBJECT-TYPE
+    SYNTAX      DisplayString
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION
+        "Name of the setting."
+    ::= { settingsEntry 1 }
+
+stsValue OBJECT-TYPE
+    SYNTAX      DisplayString
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "Value of the setting."
+    ::= { settingsEntry 2 }
+
+stsStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "Status of this conceptual row."
+    ::= { settingsEntry 3 }
+
+-- Connections
+
+connectionsTable OBJECT-TYPE
+    SYNTAX       SEQUENCE OF ConnectionsEntry
+    ACCESS       not-accessible
+    STATUS       mandatory
+    DESCRIPTION
+        "A table with all the gateways' connections."
+    ::= { connections 1 }
+
+connectionsEntry OBJECT-TYPE
+    SYNTAX       ConnectionsEntry
+    ACCESS       not-accessible
+    STATUS       mandatory
+    DESCRIPTION
+        "A conceptual row in the connectionsTable."
+    INDEX        { gtwUUID, cnnId }
+    ::= { connectionsTable 1 }
+
+ConnectionsEntry ::= SEQUENCE {
+    cnnId         INTEGER,
+    cnnType       INTEGER (1..3),
+    cnnAddr       IpAddress,
+    cnnPort       INTEGER (0..65535),
+    cnnSystemId   DisplayString (SIZE (0..15)),
+    cnnPassword   DisplayString (SIZE (0..8)),
+    cnnSystemType DisplayString (SIZE (0..12)),
+    cnnAddrTon    INTEGER (0..6),
+    cnnAddrNpi    INTEGER (0..14),
+    cnnAddrRange  DisplayString (SIZE (0..40)),
+    cnnStatus     RowStatus
+}
+
+cnnId OBJECT-TYPE
+    SYNTAX      INTEGER
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION
+        "Id of the connection."
+    ::= { connectionsEntry 1 }
+
+cnnType OBJECT-TYPE
+    SYNTAX      INTEGER { transmitter(1), receiver(2), transceiver(3) }
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "Type of the connection."
+    ::= { connectionsEntry 2 }
+
+cnnAddr OBJECT-TYPE
+    SYNTAX      IpAddress
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "IP address of the SMSC."
+    ::= { connectionsEntry 3 }
+
+cnnPort OBJECT-TYPE
+    SYNTAX      INTEGER (0..65535)
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "Port of the SMSC."
+    ::= { connectionsEntry 4 }
+
+cnnSystemId OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..15))
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "system_id to use for bind requests."
+    ::= { connectionsEntry 5 }
+
+cnnPassword OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..8))
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "password to use for bind requests."
+    ::= { connectionsEntry 6 }
+
+cnnSystemType OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..12))
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "system_type to use for bind requests. Use empty string if unkonwn."
+    ::= { connectionsEntry 7 }
+
+cnnAddrTon OBJECT-TYPE
+    SYNTAX      INTEGER (0..6)
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "addr_ton to use for bind requests. Use 0 if unknown."
+    ::= { connectionsEntry 8 }
+
+cnnAddrNpi OBJECT-TYPE
+    SYNTAX      INTEGER (0..14)
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "addr_npi to use for bind requests. Use 0 if unkown."
+    ::= { connectionsEntry 9 }
+
+cnnAddrRange OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..40))
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "address_range to use for bind requests. Use empty string if unknown."
+    ::= { connectionsEntry 10 }
+
+cnnStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "Status of this conceptual row."
+    ::= { connectionsEntry 11 }
+
+-- Customers
+
+customersTable OBJECT-TYPE
+    SYNTAX       SEQUENCE OF CustomersEntry
+    ACCESS       not-accessible
+    STATUS       mandatory
+    DESCRIPTION
+        "A table with all the customers."
+    ::= { customers 1 }
+
+customersEntry OBJECT-TYPE
+    SYNTAX       CustomersEntry
+    ACCESS       not-accessible
+    STATUS       mandatory
+    DESCRIPTION
+        "A conceptual row in the customersTable."
+    INDEX        { cstUUID }
+    ::= { customersTable 1 }
+
+CustomersEntry ::= SEQUENCE {
+    cstUUID     DisplayString (SIZE (36)),
+    cstRPS      INTEGER (0..65535),
+    cstPriority INTEGER (0..9),
+    cstStatus   RowStatus
+}
+
+cstUUID OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (36))
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION
+        "UUID of the customer."
+    ::= { customersEntry 1 }
+
+cstRPS OBJECT-TYPE
+    SYNTAX      INTEGER (0..65535)
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "Customer's maximum Requests Per Second. If set to 0
+         then no customer-level throttling will be applied to this
+         customer."
+    ::= { customersEntry 2 }
+
+cstPriority OBJECT-TYPE
+    SYNTAX      INTEGER (0..9)
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "Customer's priority."
+    ::= { customersEntry 3 }
+
+cstStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    ACCESS      read-write
+    STATUS      mandatory
+    DESCRIPTION
+        "Status of this conceptual row."
+    ::= { customersEntry 4 }
+
+END

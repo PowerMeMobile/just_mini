@@ -1,0 +1,91 @@
+JustAsn DEFINITIONS IMPLICIT TAGS ::=
+BEGIN
+
+SmsRequest ::= SEQUENCE {
+    id         [0] IA5String,
+    gatewayId  [1] IA5String,
+    customerId [2] IA5String,
+    type       [3] ENUMERATED { regular(0), part(1) },
+    message    [4] OCTET STRING,
+    encoding   [5] CHOICE { text  [0] ENUMERATED { default(-1),
+                                                   gsm0338(0),
+                                                   ascii(1),
+                                                   latin1(3),
+                                                   ucs2(8)},
+                            other [1] INTEGER },
+    params     [6] SEQUENCE OF Param,
+    sourceAddr [7] FullAddr,
+    destAddrs  [8] CHOICE { regular [0] SEQUENCE OF FullAddr,
+                            part    [1] SEQUENCE OF FullAddrAndRefNum },
+    messageIds [9] SEQUENCE OF IA5String
+}
+
+SmsResponse ::= SEQUENCE {
+    id         [0] IA5String,
+    gatewayId  [1] IA5String,
+    customerId [2] IA5String,
+    statuses   [3] SEQUENCE OF SmStatus,
+    timestamp  [4] UTCTime
+}
+
+IncomingSm ::= SEQUENCE {
+    gatewayId   [0] IA5String,
+    source      [1] FullAddr,
+    dest        [2] FullAddr,
+    message     [3] OCTET STRING,
+    dataCoding  [4] INTEGER,
+    partsRefNum [5] INTEGER OPTIONAL,
+    partsCount  [6] INTEGER OPTIONAL,
+    partIndex   [7] INTEGER OPTIONAL,
+    timestamp   [8] UTCTime
+}
+
+ReceiptBatch ::= SEQUENCE {
+    gatewayId [0] IA5String,
+    receipts  [1] SEQUENCE OF DeliveryReceipt,
+    timestamp [2] INTEGER
+}
+
+DeliveryReceipt ::= SEQUENCE {
+    messageId    [0] IA5String,
+    messageState [1] ENUMERATED { enroute(1),
+                                  delivered(2),
+                                  expired(3),
+                                  deleted(4),
+                                  undeliverable(5),
+                                  accepted(6),
+                                  unknown(7),
+                                  rejected(8),
+                                  unrecognized(9) },
+    source       [2] FullAddr
+}
+
+FullAddr ::= SEQUENCE {
+    addr [0] IA5String,
+    ton  [1] INTEGER,
+    npi  [2] INTEGER
+}
+
+FullAddrAndRefNum ::= SEQUENCE {
+    fullAddr [0] FullAddr,
+    refNum   [1] INTEGER
+}
+
+SmStatus ::= SEQUENCE {
+    originalId [0] IA5String,
+    destAddr   [1] FullAddr,
+    status     [2] ENUMERATED { success(0), failure(1) },
+    partsTotal [3] INTEGER,
+    partIndex  [4] INTEGER   OPTIONAL,
+    messageId  [5] IA5String OPTIONAL,
+    errorCode  [6] INTEGER   OPTIONAL
+}
+
+Param ::= SEQUENCE {
+    name  [0] IA5String,
+    value [1] CHOICE { integer [0] INTEGER,
+                       string  [1] IA5String,
+                       boolean [2] BOOLEAN }
+}
+
+END

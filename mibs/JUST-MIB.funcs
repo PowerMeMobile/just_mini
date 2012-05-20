@@ -1,0 +1,5 @@
+%% Writable tables.
+{gatewaysTable, {just_mib, gateways_table, [{gatewaysTable, mnesia}]}}.
+{settingsTable, {just_mib, settings_table, [{settingsTable, mnesia}]}}.
+{connectionsTable, {just_mib, connections_table, [{connectionsTable, mnesia}]}}.
+{customersTable, {just_mib, customers_table, [{customersTable, mnesia}]}}.

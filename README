@@ -1,0 +1,3 @@
+This is a work-in-progress reimplementation of Just SMPP gateway (with a reduced feature set).
+Documentation and tests are to follow soon.
+ASN.1 API is a legacy and will be replaced with redesigned protobuf API.

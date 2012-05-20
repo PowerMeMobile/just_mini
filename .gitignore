@@ -1,0 +1,12 @@
+deps
+ebin
+erl_crash.dump
+doc/*
+priv/mibs/*.bin
+mibs/.index
+include/JustAsn.hrl
+include/JUST-MIB.hrl
+src/JustAsn.erl
+src/*.asn1db
+.eunit
+TODO
