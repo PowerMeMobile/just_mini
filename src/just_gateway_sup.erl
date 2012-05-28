@@ -48,6 +48,6 @@ init([Gateway]) ->
            {request_acceptor_sup,
             {just_request_acceptor_sup, start_link, [Gateway]},
             permanent, infinity, supervisor, [just_request_acceptor_sup]},
-           {gateway,
+           {smpp_gateway,
             {just_gateway, start_link, [Gateway]},
             transient, 5000, worker, [just_gateway]}]}}.

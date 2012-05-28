@@ -11,6 +11,7 @@
 
 -opaque request_pq() :: {slice(), slice(), slice(), slice(), slice(),
                          slice(), slice(), slice(), slice(), slice()}.
+-export_type([request_pq/0]).
 
 %% -------------------------------------------------------------------------
 %% API

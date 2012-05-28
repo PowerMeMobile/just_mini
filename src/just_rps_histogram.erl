@@ -6,6 +6,8 @@
 -export([new/0, add/4, sum/3]).
 
 -opaque histogram() :: {list(), list()}.
+-export_type([histogram/0]).
+
 -type seconds() :: just_calendar:unix_time().
 -type milliseconds() :: just_calendar:milliseconds().
 

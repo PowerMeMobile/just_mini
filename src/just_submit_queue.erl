@@ -19,7 +19,7 @@
 
 %% wl - waiting list.
 -record(st, {uuid :: binary(), name :: string(), queue = queue:new() :: queue(),
-             wl = [] :: [pid()]}).
+             wl = [] :: [{pid(), any()}]}).
 
 %% -------------------------------------------------------------------------
 %% API

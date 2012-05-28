@@ -36,7 +36,7 @@
              log_mgr :: pid(),
              req_tab :: ets:tid(),
              session :: pid(),
-             wl = [] :: [pid()], % waiting list (blocked metronome workers).
+             wl = [] :: [{pid(), any()}], % waiting list (blocked metronome workers).
              throttled = false :: false | {true, reference()}}).
 
 %% -------------------------------------------------------------------------

@@ -15,7 +15,7 @@
 -define(MAX_RPS(RPS), if RPS < 25 -> RPS; true -> 25 end). % per worker.
 
 -record(st, {queue :: pid(), rps :: non_neg_integer(), client :: pid(),
-             workers = [] :: [pid()]}).
+             workers = [] :: [{pid(), any()}]}).
 
 %% -------------------------------------------------------------------------
 %% API functions

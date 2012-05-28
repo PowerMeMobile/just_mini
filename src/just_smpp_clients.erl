@@ -25,7 +25,7 @@
              on = [] :: [#smpp_connection{}],
              off = [] :: [#smpp_connection{}],
              throttled = [] :: [#smpp_connection{}],
-             clients :: ets:tid(clients, [])}).
+             clients :: ets:tid()}).
 
 %% -------------------------------------------------------------------------
 %% API
