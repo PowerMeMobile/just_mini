@@ -1,4 +1,4 @@
-.PHONY: all deps compile clean test xref check_plt build_plt clean_plt dialyze
+.PHONY: all deps compile clean test xref doc check_plt build_plt clean_plt dialyze
 
 all: deps compile
 
@@ -16,6 +16,9 @@ test:
 
 xref:
 	@./rebar skip_deps=true xref
+
+doc:
+	@./rebar skip_deps=true doc
 
 APPS = kernel stdlib sasl erts ssl tools os_mon runtime_tools crypto inets asn1 \
 	   xmerl webtool snmp public_key mnesia eunit syntax_tools compiler otp_mibs

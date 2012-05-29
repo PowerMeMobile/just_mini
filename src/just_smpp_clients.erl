@@ -136,14 +136,11 @@ active_transmitters(St) ->
     % only count connected unthrottled transmitters and transceivers.
     length([ t || #smpp_connection{type = T} <- Conns, T =/= receiver ]).
 
-active_rps(St) ->
-    active_transmitters(St) * St#st.rps.
-
 active_window_size(St) ->
     active_transmitters(St) * just_settings:get(smpp_window_size, St#st.settings).
 
 update_scheduler(St) ->
-    just_scheduler:update(St#st.uuid, active_rps(St), active_window_size(St)).
+    just_scheduler:update(St#st.uuid, active_window_size(St)).
 
 start_clients(St) ->
     start_clients(St#st.all, St).
