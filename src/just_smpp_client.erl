@@ -448,8 +448,7 @@ extract_sar_info(Body) ->
 
 decode_text(DC, Text) when DC =:= 0; DC =:= 16; DC =:= 240 ->
     % gsm 0338.
-    {_Validity, Decoded} = gsm0338:to_utf8(Text),
-    Decoded;
+    gsm0338:to_utf8(Text);
 decode_text(3, Text) ->
     % latin1.
     {ok, Decoded} = iconverl:conv("utf-8//IGNORE", "latin1", Text),

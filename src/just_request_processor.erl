@@ -170,8 +170,7 @@ encoding_dc_bitness(SmsRequest, Params, Settings) ->
     {E, ?gv(data_coding, Params, DC), B}.
 
 encode_msg(Msg, gsm0338) ->
-    {_Validity, Encoded} = gsm0338:from_utf8(Msg),
-    Encoded;
+    gsm0338:from_utf8(Msg);
 encode_msg(Msg, ascii) ->
     Msg;
 encode_msg(Msg, latin1) ->
