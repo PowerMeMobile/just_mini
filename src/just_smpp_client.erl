@@ -84,7 +84,7 @@ submit(Pid, Params, From, NotifyMsg) ->
 %% From there it will be picked up by one of the submit metronome workers
 %% and submitted to a specific client. The real (SMSC) response will be returned
 %% to the process that called enqueue_submit as a {Tag, Response} message.
--spec enqueue_submit(binary(), list(), just_calendar:precise_time()) -> reference().
+-spec enqueue_submit(binary(), list(), just_time:precise_time()) -> reference().
 enqueue_submit(UUID, Params, Expiry) ->
     Tag = make_ref(),
     From = {self(), Tag},
@@ -357,7 +357,7 @@ restart_throttled_timer(St) ->
 %% -------------------------------------------------------------------------
 
 handle_receipt(Body, St) ->
-    AcceptedAt = just_calendar:precise_time(),
+    AcceptedAt = just_time:precise_time(),
     {ID, State} = receipt_data(Body),
     R = #receipt{orig = #addr{addr = ?gv(source_addr, Body),
                               ton = ?gv(source_addr_ton, Body),
@@ -406,7 +406,7 @@ state_to_atom(_)                                   -> unrecognized.
 %% -------------------------------------------------------------------------
 
 handle_message(Body, St) ->
-    AcceptedAt = just_calendar:precise_time(),
+    AcceptedAt = just_time:precise_time(),
     P = fun(Param) -> ?gv(Param, Body) end,
     DC = P(data_coding),
     {{Total, Seqnum, RefNum}, Text} = extract_sar_info(Body),

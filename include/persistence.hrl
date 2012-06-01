@@ -13,13 +13,13 @@
          sar_total_segments = 1 :: non_neg_integer(),
          sar_segment_seqnum :: pos_integer() | undefined,
          sar_msg_ref_num :: pos_integer() | undefined,
-         accepted_at :: just_calendar:precise_time()}).
+         accepted_at :: just_time:precise_time()}).
 
 -record(receipt,
         {orig :: #addr{},
          message_id :: binary(),
          message_state :: atom(),
-         accepted_at :: just_calendar:precise_time()}).
+         accepted_at :: just_time:precise_time()}).
 
 -record(segment_result,
         {sar_segment_seqnum :: pos_integer() | undefined,
@@ -32,7 +32,7 @@
          dest :: #addr{},
          sar_total_segments = 1 :: pos_integer(),
          segment_results :: [#segment_result{}],
-         accepted_at :: just_calendar:precise_time()}).
+         accepted_at :: just_time:precise_time()}).
 
 -record(short_info,
         {orig_msg_id :: binary()}).
@@ -70,6 +70,6 @@
          registered_delivery :: 0..2,
          port_addressing :: #port_addressing{} | undefined,
          attempts = 0 :: non_neg_integer(),
-         attempt_at :: just_calendar:precise_time(),
-         expires_at :: just_calendar:precise_time(),
-         accepted_at :: just_calendar:precise_time()}).
+         attempt_at :: just_time:precise_time(),
+         expires_at :: just_time:precise_time(),
+         accepted_at :: just_time:precise_time()}).

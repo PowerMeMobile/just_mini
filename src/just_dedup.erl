@@ -46,7 +46,7 @@ handle_call({is_dup, UUID}, _From, St) ->
     {reply, toke_drv:get(St#st.toke, UUID) =/= not_found, St};
 
 handle_call({insert, UUID}, _From, St) ->
-    {S, MS} = just_calendar:precise_time(),
+    {S, MS} = just_time:precise_time(),
     CS = S * 100 + MS div 10, % to centiseconds.
     toke_drv:insert_async(St#st.toke, UUID, <<CS:40>>),
     Index = index_insert(St#st.index, CS, UUID),

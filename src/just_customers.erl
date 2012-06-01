@@ -24,7 +24,7 @@
 start_link(CustomerSup) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [CustomerSup], []).
 
--spec request(binary(), pos_integer(), just_calendar:precise_time()) ->
+-spec request(binary(), pos_integer(), just_time:precise_time()) ->
               true | false | undefined.
 request(UUID, Reqs, Time) ->
     case ets:lookup(?customer_ets, UUID) of

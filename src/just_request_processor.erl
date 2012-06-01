@@ -46,7 +46,7 @@ handle_call(Request, _From, St) ->
     {stop, {unexpected_call, Request}, St}.
 
 handle_cast({process, Body, Settings}, St) ->
-    AcceptedAt = just_calendar:precise_time(),
+    AcceptedAt = just_time:precise_time(),
     {ok, SmsRequest} = 'JustAsn':decode('SmsRequest', Body),
     lists:foreach(fun(R) ->
                       U = uuid:generate(),
@@ -227,7 +227,7 @@ parse_atime([Y1,Y2,Mon1,Mon2,D1,D2,H1,H2,Min1,Min2,S1,S2,T,N1,N2,P]) ->
           {list_to_integer([H1,H2]),
            list_to_integer([Min1,Min2]),
            list_to_integer([S1,S2])}},
-    Seconds = just_calendar:datetime_to_unix_time(DT),
+    Seconds = just_time:datetime_to_unix_time(DT),
     Sign = case P of $+ -> 1; $- -> -1 end,
     Diff = list_to_integer([N1,N2]) * 15 * 60 * Sign,
     {Seconds - Diff, list_to_integer([T]) * 100}.

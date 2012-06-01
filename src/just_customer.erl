@@ -27,7 +27,7 @@ start_link(UUID, RPS) ->
 stop(Pid) ->
     gen_server:cast(Pid, stop).
 
--spec request(pid(), pos_integer(), just_calendar:precise_time()) ->
+-spec request(pid(), pos_integer(), just_time:precise_time()) ->
               boolean().
 request(Pid, Reqs, Time) ->
     gen_server:call(Pid, {request, Reqs, Time}, infinity).
@@ -76,7 +76,7 @@ handle_cast(Request, St) ->
     {stop, {unexpected_cast, Request}, St}.
 
 handle_info({timeout, _TRef, wait}, St) ->
-    {S, MS} = just_calendar:precise_time(),
+    {S, MS} = just_time:precise_time(),
     case just_rps_histogram:sum(S - 1, MS, St#st.hg) < St#st.rps of
         true ->
             [ Pid ! {customer_ready, St#st.uuid} || Pid <- St#st.wl ],

@@ -29,7 +29,7 @@
              index :: gb_tree(), % backlog index by accepted_at
              chan :: pid(),
              queue :: binary(),
-             publishing = [] :: [{binary(), [binary()], just_calendar:precise_time()}],
+             publishing = [] :: [{binary(), [binary()], just_time:precise_time()}],
              publisher :: pid(),
              waiting = false :: boolean()}).
 
@@ -47,7 +47,7 @@ stop(UUID) ->
 
 %% @doc Notify the sink that a response has been inserted into the tokyo
 %% cabinet table.
--spec notify(binary(), binary(), binary(), just_calendar:precise_time()) -> ok.
+-spec notify(binary(), binary(), binary(), just_time:precise_time()) -> ok.
 notify(UUID, BatchUUID, SegmentUUID, AcceptedAt) ->
     gen_server:cast(?pid(UUID), {notify, BatchUUID, SegmentUUID, AcceptedAt}).
 

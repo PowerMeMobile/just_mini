@@ -1,4 +1,4 @@
--module(just_calendar).
+-module(just_time).
 
 -export([unix_time/0,
          precise_time/0,

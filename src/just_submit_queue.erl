@@ -15,7 +15,7 @@
 -export([init/1, terminate/2, handle_call/3, handle_cast/2, handle_info/2,
          code_change/3]).
 
--type expiry() :: just_calendar:precise_time().
+-type expiry() :: just_time:precise_time().
 
 %% wl - waiting list.
 -record(st, {uuid :: binary(), name :: string(), queue = queue:new() :: queue(),
@@ -98,7 +98,7 @@ code_change(_OldVsn, St, _Extra) ->
 %% -------------------------------------------------------------------------
 
 queue_out(Q) ->
-    queue_out(Q, just_calendar:precise_time()).
+    queue_out(Q, just_time:precise_time()).
 
 queue_out(Q, T) ->
     case queue:out(Q) of

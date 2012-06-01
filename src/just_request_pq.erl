@@ -8,7 +8,7 @@
 -export([new/1, in/2, out/2, throttle/2, unthrottle/2, update/2, remove/2]).
 
 -type priority_fun() :: fun((binary()) -> 0..9 | undefined).
--type request() :: {binary(), binary(), pos_integer(), just_calendar:precise_time()}.
+-type request() :: {binary(), binary(), pos_integer(), just_time:precise_time()}.
 
 -record(pq, {pfun :: priority_fun(), active :: tuple(),
              index = dict:new() :: dict(),
@@ -44,7 +44,7 @@ in({Customer, _Request, _Size, _AttemptTime} = R, PQ) ->
 
 %% @doc Takes out next available request from the priority queue.
 %% Returns 'empty' if there is no ready request in the queue.
--spec out(just_calendar:precise_time(), request_pq()) ->
+-spec out(just_time:precise_time(), request_pq()) ->
     empty | {request(), request_pq()}.
 out(TimeNow, PQ) ->
     out(TimeNow, PQ, 9).

@@ -49,7 +49,7 @@ update(UUID, WindowSize) ->
     gen_server:cast(?pid(UUID), {update, WindowSize}).
 
 -spec notify(binary(), binary(), binary(), pos_integer(),
-             just_calendar:precise_time()) -> ok.
+             just_time:precise_time()) -> ok.
 notify(UUID, Customer, Request, Size, AttemptAt) ->
     gen_server:cast(?pid(UUID), {notify, Customer, Request, Size, AttemptAt}).
 
@@ -179,7 +179,7 @@ maybe_schedule(#st{slots_total = Total, slots_taken = Taken} = St) when Taken >=
 maybe_schedule(#st{waiting = {true, _}} = St) ->
     St;
 maybe_schedule(St) ->
-    Time = just_calendar:precise_time(),
+    Time = just_time:precise_time(),
     case just_request_pq:out(Time, St#st.pq) of
         empty ->
             TRef = erlang:start_timer(50, self(), schedule),

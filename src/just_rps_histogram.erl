@@ -8,8 +8,8 @@
 -opaque histogram() :: {list(), list()}.
 -export_type([histogram/0]).
 
--type seconds() :: just_calendar:unix_time().
--type milliseconds() :: just_calendar:milliseconds().
+-type seconds() :: just_time:unix_time().
+-type milliseconds() :: just_time:milliseconds().
 
 %% -------------------------------------------------------------------------
 %% API

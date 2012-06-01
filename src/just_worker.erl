@@ -73,7 +73,7 @@ handle_cast({work, ReqUUID}, St) ->
                         [St#st.name, uuid:unparse_lower(ReqUUID)]);
         Bin ->
             Req = binary_to_term(Bin),
-            case just_calendar:precise_time() >= Req#request.expires_at of
+            case just_time:precise_time() >= Req#request.expires_at of
                 true ->
                     do_kill(expired, Req, ReqUUID, St);
                 false ->
@@ -106,7 +106,7 @@ code_change(_OldVsn, St, _Extra) ->
 %% -------------------------------------------------------------------------
 
 do_work(Req, ReqUUID, St) ->
-    Time = just_calendar:precise_time(),
+    Time = just_time:precise_time(),
     RT = ?gs(smpp_response_time, St#st.settings),
     Expires = add_ms(Time, RT),
     SegNums = Req#request.todo_segments,
@@ -158,7 +158,7 @@ reschedule(Req, UUID, St) ->
                 true  -> ?gs(slow_retry_delay, St#st.settings);
                 false -> ?gs(fast_retry_delay, St#st.settings)
             end,
-    AttemptAt = erlang:min(add_ms(just_calendar:precise_time(), Delay),
+    AttemptAt = erlang:min(add_ms(just_time:precise_time(), Delay),
                            Req#request.expires_at),
     toke_drv:insert(St#st.request, UUID,
                     term_to_binary(Req#request{attempt_at = AttemptAt})),
