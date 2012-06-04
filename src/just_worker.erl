@@ -147,8 +147,7 @@ respond(Req, UUID, St) ->
                      segment_results = Req#request.done_segments,
                      accepted_at = Req#request.accepted_at},
     toke_drv:insert(St#st.response, UUID, term_to_binary(Resp)),
-    just_response_sink:notify(St#st.uuid, Req#request.batch, UUID,
-                              Req#request.accepted_at),
+    just_sink:notify(St#st.uuid, response, Req#request.accepted_at, UUID),
     toke_drv:delete(St#st.request, UUID).
 
 reschedule(Req, UUID, St) ->

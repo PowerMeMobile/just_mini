@@ -368,7 +368,7 @@ handle_receipt(Body, St) ->
     UUID = uuid:generate(),
     toke_drv:insert(just_cabinets:table(St#st.uuid, receipt), UUID,
                     term_to_binary(R)),
-    just_incoming_sink:notify(St#st.uuid, receipt, UUID).
+    just_sink:notify(St#st.uuid, receipt, AcceptedAt, UUID).
 
 receipt_data(Body) ->
     case receipt_data_from_tlv(Body) of
@@ -425,7 +425,7 @@ handle_message(Body, St) ->
     UUID = uuid:generate(),
     toke_drv:insert(just_cabinets:table(St#st.uuid, message), UUID,
                     term_to_binary(M)),
-    just_incoming_sink:notify(St#st.uuid, message, UUID).
+    just_sink:notify(St#st.uuid, message, AcceptedAt, UUID).
 
 extract_sar_info(Body) ->
     case smpp_sm:udhi(Body) of
