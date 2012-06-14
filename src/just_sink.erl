@@ -223,29 +223,29 @@ dtags_upto(Max, St, Acc) ->
 backlog_new() ->
     gb_trees:empty().
 
-backlog_in(At, UUID, Q) ->
-    case gb_trees:lookup(At, Q) of
+backlog_in(At, UUID, B) ->
+    case gb_trees:lookup(At, B) of
         none ->
-            gb_trees:insert(At, [UUID], Q);
+            gb_trees:insert(At, [UUID], B);
         {value, UUIDs} ->
-            gb_trees:update(At, [UUID|UUIDs], Q)
+            gb_trees:update(At, [UUID|UUIDs], B)
     end.
 
-backlog_out(Q) ->
-    case gb_trees:is_empty(Q) of
+backlog_out(B) ->
+    case gb_trees:is_empty(B) of
         true ->
             empty;
         false ->
-            {At, [UUID|T], Q1} = gb_trees:take_smallest(Q),
-            Q2 = case T of
-                     [] -> Q1;
-                     _  -> gb_trees:update(At, T, Q)
+            {At, [UUID|T], B1} = gb_trees:take_smallest(B),
+            B2 = case T of
+                     [] -> B1;
+                     _  -> gb_trees:update(At, T, B)
                  end,
-            {At, UUID, Q2}
+            {At, UUID, B2}
     end.
 
-backlog_size(Q) ->
-    backlog_size(gb_trees:iterator(Q), 0).
+backlog_size(B) ->
+    backlog_size(gb_trees:iterator(B), 0).
 
 backlog_size(Iter, Size) ->
     case gb_trees:next(Iter) of
