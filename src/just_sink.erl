@@ -238,8 +238,8 @@ backlog_out(Q) ->
         false ->
             {At, [UUID|T], Q1} = gb_trees:take_smallest(Q),
             Q2 = case T of
-                     [] -> gb_trees:delete(At, Q1);
-                     _  -> gb_trees:update(At, T, Q1)
+                     [] -> Q1;
+                     _  -> gb_trees:update(At, T, Q)
                  end,
             {At, UUID, Q2}
     end.
@@ -269,8 +269,8 @@ publish(AcceptedAt, UUID, St) ->
             {Payload, Pbasic} = encode(St#st.type, St#st.uuid, UUID, Bin),
             case just_amqp:publish(St#st.chan, Payload, Pbasic, St#st.queue) of
                 ok ->
-                    ets:insert(St#st.unconfirmed,
-                               {amqp_channel:next_publish_seqno(St#st.chan), AcceptedAt, UUID}),
+                    Seqno = amqp_channel:next_publish_seqno(St#st.chan) - 1,
+                    ets:insert(St#st.unconfirmed, {Seqno, AcceptedAt, UUID}),
                     true;
                 {error, Reason} ->
                     lager:error("Gateway #~s#: AMQP error when publishing a ~s (~s)",
