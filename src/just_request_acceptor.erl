@@ -163,6 +163,8 @@ setup_chan(St) ->
         {ok, Chan} ->
             monitor(process, Chan),
             ok = just_amqp:declare_queue(Chan, St#st.queue),
+			Qos = just_app:get_env(amqp_qos),
+			ok = just_amqp:qos(Chan, Qos),
             {ok, CTag} = just_amqp:subscribe(Chan, St#st.queue),
             St#st{chan = Chan, ctag = CTag};
         unavailable ->

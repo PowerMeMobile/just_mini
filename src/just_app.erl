@@ -53,6 +53,7 @@ default_env(amqp_password)        -> <<"guest">>;
 default_env(amqp_vhost)           -> <<"/">>;
 default_env(amqp_host)            -> "localhost";
 default_env(amqp_port)            -> 5672;
+default_env(amqp_qos)			  -> 1000;
 default_env(request_queue_prefix) -> "pmm.just.gateway.";
 default_env(response_queue)       -> "pmm.mmwl.response.sms";
 default_env(message_queue)        -> "pmm.mmwl.incoming.sms";

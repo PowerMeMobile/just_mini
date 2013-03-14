@@ -2,13 +2,23 @@
 
 -include_lib("amqp_client/include/amqp_client.hrl").
 
--export([publish/4, ack/2, subscribe/2, unsubscribe/2]).
+-export([qos/2, publish/4, ack/2, subscribe/2, unsubscribe/2]).
 -export([declare_queue/2]).
 -export([confirm_select/1]).
 
 %% -------------------------------------------------------------------------
 %% basic functions
 %% -------------------------------------------------------------------------
+
+-spec qos(pid(), non_neg_integer()) -> 'ok' | {'error', any()}.
+qos(Chan, PrefetchCount) ->
+    Method = #'basic.qos'{prefetch_count = PrefetchCount},
+    try amqp_channel:call(Chan, Method) of
+        #'basic.qos_ok'{} -> ok;
+        Other             -> {error, Other}
+    catch
+        _:Reason -> {error, Reason}
+    end.
 
 -spec publish(pid(), binary(), #'P_basic'{}, binary()) ->
     ok | {error, noproc | closing}.
