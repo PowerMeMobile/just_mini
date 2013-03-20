@@ -20,7 +20,7 @@
         end).
 
 -define(gv(Key, Params), proplists:get_value(Key, Params)).
--define(gv(Key, Params, Defaule), proplists:get_value(Key, Params, Default)).
+-define(gv(Key, Params, Default), proplists:get_value(Key, Params, Default)).
 -define(gs(Key, Settings), just_settings:get(Key, Settings)).
 
 %% FIXME: LEGACY ERROR CODES.
