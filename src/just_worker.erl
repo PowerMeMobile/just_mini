@@ -330,7 +330,7 @@ smpp_pdu(short, Common, Req, Settings) ->
                 Req#request.port_addressing,
             case use_tlvs(Settings) of
                 true ->
-                    [{destination_port, DestPort},
+                    [{dest_port, DestPort},
                      {source_port, OrigPort},
                      {short_message, Payload}
                      |Common];
@@ -366,7 +366,7 @@ segment_pdu(RefNum, TotalSegments, Seqnum, Req, Payload, Common, Settings) ->
                 Req#request.port_addressing,
             case use_tlvs(Settings) of
                 true ->
-                    [{destination_port, DestPort},
+                    [{dest_port, DestPort},
                      {source_port, OrigPort},
                      {sar_msg_ref_num, RefNum},
                      {sar_total_segments, TotalSegments},
