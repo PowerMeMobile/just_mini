@@ -4,6 +4,7 @@
 
 %% API exports
 -export([get_env/1]).
+-export([set_debug_level/0]).
 
 %% application callback exports
 -export([start/2, prep_stop/1, stop/1, config_change/3]).
@@ -20,6 +21,10 @@ get_env(Key) ->
         {ok, Val} -> Val;
         undefined -> default_env(Key)
     end.
+
+-spec set_debug_level() -> ok.
+set_debug_level() ->
+	lager:set_loglevel(lager_console_backend, debug).
 
 %% -------------------------------------------------------------------------
 %% application callback functions
