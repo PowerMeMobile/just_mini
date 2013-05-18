@@ -89,4 +89,26 @@ Param ::= SEQUENCE {
                        boolean [2] BOOLEAN }
 }
 
+ThroughputRequest ::= SEQUENCE {
+}
+
+ThroughputResponse ::= SEQUENCE {
+    slices [0] SEQUENCE OF Slice
+}
+
+Slice ::= SEQUENCE {
+    periodStart [0] UTCTime,
+    counters    [1] SEQUENCE OF Counter
+}
+
+Counter ::= SEQUENCE {
+    gatewayId      [0] IA5String,
+    gatewayName	   [1] IA5String,
+    type           [2] ENUMERATED { smsOut(1), smsIn(2) },
+    count          [3] INTEGER
+}
+
+GenNack ::= SEQUENCE {
+}
+
 END

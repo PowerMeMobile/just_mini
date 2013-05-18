@@ -2,9 +2,37 @@
 
 -include_lib("amqp_client/include/amqp_client.hrl").
 
+-export([connection_start/0, connection_close/1]).
+-export([channel_open/1]).
 -export([qos/2, publish/4, ack/2, subscribe/2, unsubscribe/2]).
--export([declare_queue/2]).
+-export([declare_queue/5, declare_queue/2]).
 -export([confirm_select/1]).
+
+%% -------------------------------------------------------------------------
+%% Connection methods
+%% -------------------------------------------------------------------------
+
+-spec connection_start() -> {'ok', pid()} | {'error', any()}.
+connection_start() ->
+    Params = #amqp_params_network{virtual_host = just_app:get_env(amqp_vhost),
+                                  username = just_app:get_env(amqp_username),
+                                  password = just_app:get_env(amqp_password),
+                                  host = just_app:get_env(amqp_host),
+                                  port = just_app:get_env(amqp_port)},
+	amqp_connection:start(Params).
+
+-spec connection_close(pid()) -> 'ok'.
+connection_close(Conn) ->
+    catch(amqp_connection:close(Conn)),
+    ok.
+
+%% -------------------------------------------------------------------------
+%% Channel methods
+%% -------------------------------------------------------------------------
+
+-spec channel_open(pid()) -> {'ok', pid()} | {'error', any()}.
+channel_open(Conn) ->
+    amqp_connection:open_channel(Conn).
 
 %% -------------------------------------------------------------------------
 %% basic functions
@@ -69,6 +97,16 @@ unsubscribe(Channel, CTag) ->
 -spec declare_queue(pid(), binary()) -> ok.
 declare_queue(Channel, Queue) ->
     Method = #'queue.declare'{queue = Queue, durable = true},
+    #'queue.declare_ok'{} = amqp_channel:call(Channel, Method),
+    ok.
+
+-spec declare_queue(pid(), binary(), boolean(), boolean(), boolean()) -> ok.
+declare_queue(Channel, Queue, Durable, Exclusive, Autodelete) ->
+    Method = #'queue.declare'{
+		queue = Queue,
+		durable = Durable,
+		exclusive = Exclusive,
+		auto_delete = Autodelete},
     #'queue.declare_ok'{} = amqp_channel:call(Channel, Method),
     ok.
 

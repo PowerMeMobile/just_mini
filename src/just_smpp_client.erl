@@ -177,6 +177,7 @@ handle_call({submit, Params, From, NotifyMsg}, {Pid, _Tag}, St) ->
         false ->
             Ref = gen_esme_session:submit_sm(St#st.session, Params),
             ets:insert(St#st.req_tab, {Ref, From}),
+            just_throughput:incr(St#st.uuid, St#st.name, sms_out, 1),
             {reply, ok, St};
         true ->
             {reply, blocked, St#st{wl = [{Pid, NotifyMsg}|St#st.wl]}}
@@ -214,6 +215,7 @@ handle_cast({handle_resp, Resp, Ref}, St) ->
 
 %% TODO LATER: spawn a process to handle each deliver_sm.
 handle_cast({handle_deliver_sm, SeqNum, Body}, St) ->
+    just_throughput:incr(St#st.uuid, St#st.name, sms_in, 1),
     IsReceipt =
         ?gv(esm_class, Body) band ?ESM_CLASS_TYPE_MC_DELIVERY_RECEIPT =:=
                 ?ESM_CLASS_TYPE_MC_DELIVERY_RECEIPT,

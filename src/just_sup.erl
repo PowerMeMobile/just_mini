@@ -18,8 +18,16 @@ start_link() ->
 %% -------------------------------------------------------------------------
 
 init([]) ->
-    {ok, {{one_for_all, 10, 60},
-          [{customers_sup, {just_customers_sup, start_link, []},
+    {ok, {{one_for_all, 10, 60}, [
+			{just_throughput, {just_throughput, start_link, []},
+			permanent, 5000, worker, [just_throughput]},
+
+			{customers_sup, {just_customers_sup, start_link, []},
             permanent, infinity, supervisor, [just_customers_sup]},
+
            {gateways_sup, {just_gateways_sup, start_link, []},
-            permanent, infinity, supervisor, [just_gateways_sup]}]}}.
+            permanent, infinity, supervisor, [just_gateways_sup]},
+
+			{just_amqp_control, {just_amqp_control, start_link, []},
+			permanent, 5000, worker, [just_amqp_control]}
+	]}}.
