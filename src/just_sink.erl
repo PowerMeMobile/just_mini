@@ -301,7 +301,7 @@ maybe_publish_backlog(St) ->
 encode(response, GatewayUUID, SegmentUUID, Bin) ->
     #response{batch = BatchUUID, customer = CustomerUUID, dest = Dest,
               sar_total_segments = Total, segment_results = SegmentResults,
-              accepted_at = {Seconds, _}} = binary_to_term(Bin),
+              accepted_at = {Seconds, _MilliSeconds}} = binary_to_term(Bin),
     SmStatuses = [ sm_status(Dest, Total, SR) || SR <- SegmentResults ],
     Timestamp = just_time:unix_time_to_utc_string(Seconds),
     SmsResponse = #'SmsResponse'{id = uuid:unparse_lower(BatchUUID),
@@ -316,7 +316,7 @@ encode(response, GatewayUUID, SegmentUUID, Bin) ->
 
 encode(message, GatewayUUID, MessageUUID, Bin) ->
     #message{orig = Orig, dest = Dest, body = Body, data_coding = DC,
-             accepted_at = {Seconds, _}, sar_total_segments = Total,
+             accepted_at = {Seconds, _MilliSeconds}, sar_total_segments = Total,
              sar_segment_seqnum = Seqnum,
              sar_msg_ref_num = RefNum} = binary_to_term(Bin),
     Timestamp = just_time:unix_time_to_utc_string(Seconds),
@@ -335,10 +335,8 @@ encode(message, GatewayUUID, MessageUUID, Bin) ->
 
 encode(receipt, GatewayUUID, ReceiptUUID, Bin) ->
     #receipt{orig = Orig, message_id = MsgID, message_state = MsgState,
-             accepted_at = {Seconds, MilliSeconds}} = binary_to_term(Bin),
-    % legacy format - timestamp is in microseconds here because of
-    % some old middleware implementation issues with ordering.
-    Timestamp = (Seconds * 1000 + MilliSeconds) * 1000,
+             accepted_at = {Seconds, _MilliSeconds}} = binary_to_term(Bin),
+    Timestamp = just_time:unix_time_to_utc_string(Seconds),
     DeliveryReceipt = #'DeliveryReceipt'{messageId = MsgID,
                                          messageState = MsgState,
                                          source = full_addr(Orig)},

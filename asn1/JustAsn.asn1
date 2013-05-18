@@ -44,7 +44,7 @@ IncomingSm ::= SEQUENCE {
 ReceiptBatch ::= SEQUENCE {
     gatewayId [0] IA5String,
     receipts  [1] SEQUENCE OF DeliveryReceipt,
-    timestamp [2] INTEGER
+    timestamp [2] UTCTime
 }
 
 DeliveryReceipt ::= SEQUENCE {
