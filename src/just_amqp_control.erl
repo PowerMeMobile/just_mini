@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 -include_lib("amqp_client/include/amqp_client.hrl").
--include("JustAsn.hrl").
+-include_lib("alley_dto/include/JustAsn.hrl").
 
 %% API exports
 -export([start_link/0]).

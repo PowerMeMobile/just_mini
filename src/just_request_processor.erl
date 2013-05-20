@@ -1,6 +1,6 @@
 -module(just_request_processor).
 
--include("JustAsn.hrl").
+-include_lib("alley_dto/include/JustAsn.hrl").
 -include("persistence.hrl").
 
 -behaviour(gen_server).

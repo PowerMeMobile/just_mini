@@ -2,7 +2,7 @@
 
 -include("gateway.hrl").
 -include("persistence.hrl").
--include("JustAsn.hrl").
+-include_lib("alley_dto/include/JustAsn.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
 
 -define(name(UUID, Type), {UUID, sink, Type}).
