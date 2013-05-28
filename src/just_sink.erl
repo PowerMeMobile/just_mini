@@ -67,7 +67,7 @@ init([Gateway, Type]) ->
               message  -> message_queue;
               receipt  -> receipt_queue
           end,
-    Queue = list_to_binary(just_app:get_env(Key)),
+    Queue = just_app:get_env(Key),
     lager:info("Gateway #~s#: ~s sink will publish to ~s",
                [Name, Type, Queue]),
     St = setup_chan(#st{uuid = UUID, type = Type, name = Name,

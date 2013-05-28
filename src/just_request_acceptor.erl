@@ -46,13 +46,13 @@ init([Gateway, Dedup, ProcessorSup]) ->
     #gateway{uuid = UUID, name = Name, settings = Settings} = Gateway,
     lager:info("Gateway #~s#: initializing request acceptor", [Name]),
     gproc:add_local_name(?name(UUID)),
-    Queue = just_app:get_env(request_queue_prefix) ++
-            binary_to_list(uuid:unparse_lower(UUID)),
+	QueuePrefix = just_app:get_env(request_queue_prefix),
+	Queue = <<QueuePrefix/binary, $., (uuid:unparse_lower(UUID))/binary>>,
     lager:info("Gateway #~s#: request acceptor will consume from ~s",
                [Name, Queue]),
     St = setup_chan(#st{uuid = UUID, name = Name, settings = Settings,
                         dedup = Dedup, sup = ProcessorSup,
-                        queue = list_to_binary(Queue),
+                        queue = Queue,
                         processors = ets:new(processors, [])}),
     lager:info("Gateway #~s#: initialized request acceptor", [Name]),
     {ok, St}.

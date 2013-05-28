@@ -11,6 +11,8 @@
 
 -define(APP, just_mini).
 
+-include_lib("queue_fabric/include/queue_fabric.hrl").
+
 %% -------------------------------------------------------------------------
 %% API
 %% -------------------------------------------------------------------------
@@ -59,10 +61,11 @@ default_env(amqp_vhost)           -> <<"/">>;
 default_env(amqp_host)            -> "localhost";
 default_env(amqp_port)            -> 5672;
 default_env(amqp_qos)			  -> 1000;
-default_env(request_queue_prefix) -> "pmm.just.gateway.";
-default_env(response_queue)       -> "pmm.mmwl.response.sms";
-default_env(message_queue)        -> "pmm.mmwl.incoming.sms";
-default_env(receipt_queue)        -> "pmm.mmwl.receipt.sms";
+default_env(request_queue_prefix) -> ?JUST_GTW_Q_PREFIX;
+default_env(response_queue)       -> ?RESPONSE_SMS_Q;
+default_env(message_queue)        -> ?INCOMING_SMS_Q;
+default_env(receipt_queue)        -> ?RECEIPT_SMS_Q;
+default_env(control_queue) 		  -> ?JUST_CONTROL_Q;
 default_env(file_log_dir)         -> "log";
 default_env(file_log_size)        -> 5000000;
 default_env(replies_deadline)     -> 120.
