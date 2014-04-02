@@ -5,7 +5,7 @@
 -define(name(UUID), {UUID, cabinets}).
 -define(pid(UUID), gproc:lookup_local_name(?name(UUID))).
 
--define(names, [dedup, request, response, message, receipt]).
+-define(names, [dedup, request, response, incoming, receipt]).
 
 -behaviour(gen_server).
 
@@ -31,7 +31,7 @@ start_link(Gateway, Tables) ->
 stop(UUID) ->
     gen_server:call(?pid(UUID), stop, infinity).
 
--spec table(binary(), dedup | request | response | message | receipt) -> pid().
+-spec table(binary(), dedup | request | response | incoming | receipt) -> pid().
 table(UUID, Name) ->
     gen_server:call(?pid(UUID), {table, Name}, infinity).
 

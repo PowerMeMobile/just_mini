@@ -30,7 +30,7 @@ init([Gateway]) ->
             transient, 5000, worker, [just_sink]},
            {receipt_sink, {just_sink, start_link, [Gateway, receipt]},
             transient, 5000, worker, [just_sink]},
-           {message_sink, {just_sink, start_link, [Gateway, message]},
+           {message_sink, {just_sink, start_link, [Gateway, incoming]},
             transient, 5000, worker, [just_sink]},
            {submit_queue, {just_submit_queue, start_link, [Gateway]},
             transient, 5000, worker, [just_submit_queue]},

@@ -17,7 +17,6 @@
          code_change/3]).
 
 -define(RECONNECT_INTERVAL, 5000). % 5 seconds.
--define(CONTROL_KEY, <<"pmm.just.control">>).
 
 -record(st, {conn :: pid(), chan :: pid()}).
 
@@ -57,8 +56,9 @@ handle_info({timeout, _Ref, connect}, St) ->
             lager:info("amqp control: amqp connection up"),
             try
                 {ok, Chan} = just_amqp:channel_open(Conn),
-                just_amqp:declare_queue(Chan, ?CONTROL_KEY, false, true, true),
-                just_amqp:subscribe(Chan, ?CONTROL_KEY),
+                ControlQueue = list_to_binary(just_app:get_env(control_queue)),
+                just_amqp:declare_queue(Chan, ControlQueue, false, true, true),
+                just_amqp:subscribe(Chan, ControlQueue),
                 {noreply, St#st{conn = Conn, chan = Chan}}
             catch
                 _:_Reason ->

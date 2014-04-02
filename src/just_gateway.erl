@@ -49,7 +49,7 @@ handle_call(stop, _From, St) ->
     just_scheduler:stop(UUID),
     just_smpp_clients:stop(UUID),
     just_submit_queue:stop(UUID),
-    just_sink:stop(UUID, message),
+    just_sink:stop(UUID, incoming),
     just_sink:stop(UUID, receipt),
     just_sink:stop(UUID, response),
     just_amqp_conn:stop(UUID),

@@ -59,10 +59,11 @@ default_env(amqp_vhost)           -> <<"/">>;
 default_env(amqp_host)            -> "localhost";
 default_env(amqp_port)            -> 5672;
 default_env(amqp_qos)			  -> 1000;
-default_env(request_queue_prefix) -> "pmm.just.gateway.";
-default_env(response_queue)       -> "pmm.mmwl.response.sms";
-default_env(message_queue)        -> "pmm.mmwl.incoming.sms";
-default_env(receipt_queue)        -> "pmm.mmwl.receipt.sms";
+default_env(request_queue_prefix) -> "pmm.alley.just.gateway.";
+default_env(control_queue)        -> "pmm.alley.just.control";
+default_env(response_queue)       -> "pmm.alley.kelly.response.sms";
+default_env(incoming_queue)       -> "pmm.alley.kelly.incoming.sms";
+default_env(receipt_queue)        -> "pmm.alley.kelly.receipt.sms";
 default_env(file_log_dir)         -> "log";
 default_env(file_log_size)        -> 5000000;
 default_env(replies_deadline)     -> 120.

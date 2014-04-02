@@ -21,7 +21,7 @@
 -export([init/1, terminate/2, handle_call/3, handle_cast/2, handle_info/2,
          code_change/3]).
 
--type type() :: response | message | receipt.
+-type type() :: response | incoming | receipt.
 
 -record(st, {uuid :: binary(),
              name :: string(),
@@ -64,7 +64,7 @@ init([Gateway, Type]) ->
                [Name, backlog_size(Backlog), Type]),
     Key = case Type of
               response -> response_queue;
-              message  -> message_queue;
+              incoming -> incoming_queue;
               receipt  -> receipt_queue
           end,
     Queue = list_to_binary(just_app:get_env(Key)),
@@ -295,7 +295,7 @@ maybe_publish_backlog(St) ->
     end.
 
 %% -------------------------------------------------------------------------
-%% encode (response | message | receipt) !REMAINS OF A LEGACY API!
+%% encode (response | incoming | receipt) !REMAINS OF A LEGACY API!
 %% -------------------------------------------------------------------------
 
 encode(response, GatewayUUID, SegmentUUID, Bin) ->
@@ -314,7 +314,7 @@ encode(response, GatewayUUID, SegmentUUID, Bin) ->
                         message_id = uuid:unparse_lower(SegmentUUID)},
     {list_to_binary(Encoded), Pbasic};
 
-encode(message, GatewayUUID, MessageUUID, Bin) ->
+encode(incoming, GatewayUUID, MessageUUID, Bin) ->
     #message{orig = Orig, dest = Dest, body = Body, data_coding = DC,
              accepted_at = {Seconds, _MilliSeconds}, sar_total_segments = Total,
              sar_segment_seqnum = Seqnum,

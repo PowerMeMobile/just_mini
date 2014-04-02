@@ -425,9 +425,9 @@ handle_message(Body, St) ->
                  sar_msg_ref_num = RefNum,
                  accepted_at = AcceptedAt},
     UUID = uuid:generate(),
-    toke_drv:insert(just_cabinets:table(St#st.uuid, message), UUID,
+    toke_drv:insert(just_cabinets:table(St#st.uuid, incoming), UUID,
                     term_to_binary(M)),
-    just_sink:notify(St#st.uuid, message, AcceptedAt, UUID).
+    just_sink:notify(St#st.uuid, incoming, AcceptedAt, UUID).
 
 extract_sar_info(Body) ->
     case smpp_sm:udhi(Body) of
