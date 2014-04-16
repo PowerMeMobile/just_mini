@@ -19,7 +19,7 @@
 %% gen_esme_session exports
 -export([handle_accept/2, handle_alert_notification/2, handle_outbind/2,
          handle_resp/3, handle_operation/2, handle_enquire_link/2,
-         handle_unbind/2, handle_closed/2]).
+         handle_unbind/2, handle_closed/2, handle_timeout/3]).
 
 -define(THROTTLED_PAUSE, 500). % milliseconds before resuming submits.
 
@@ -245,6 +245,11 @@ handle_cast({handle_closed, Reason}, St) ->
                 [St#st.name, to_list(St#st.conn), Reason]),
     {stop, {socket_error, Reason}, St};
 
+handle_cast({handle_timeout, SeqNum, Ref}, St) ->
+    lager:warning("Gateway #~s#: timeout seq_num: ~p ref: ~p",
+            [St#st.name, SeqNum, Ref]),
+    {noreply, St};
+
 handle_cast(Request, St) ->
     {stop, {unexpected_cast, Request}, St}.
 
@@ -309,6 +314,9 @@ handle_unbind(Esme, _Pdu) ->
 %% Notify Client of the Reason before stopping the session.
 handle_closed(Esme, Reason) ->
     gen_server:cast(Esme, {handle_closed, Reason}).
+
+handle_timeout(Esme, SeqNum, Ref) ->
+    gen_server:cast(Esme, {handle_timeout, SeqNum, Ref}).
 
 %% -------------------------------------------------------------------------
 %% handle throttling
