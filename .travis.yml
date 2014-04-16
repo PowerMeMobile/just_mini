@@ -1,0 +1,10 @@
+language: erlang
+script: "make"
+otp_release:
+  - R15B03
+notifications:
+  email:
+    - d.klionsky@dev.powermemobile.com
+before_install:
+ - sudo apt-get update -qq
+ - sudo apt-get install -qq uuid-dev libtokyocabinet-dev
