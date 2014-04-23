@@ -127,7 +127,7 @@ handle_request(<<"ThroughputRequest">>, _Payload) ->
     ),
     AsnResp = #'ThroughputResponse'{slices = Slices},
     {ok, Resp} = 'JustAsn':encode('ThroughputResponse', AsnResp),
-    {list_to_binary(Resp), <<"ThroughputResponse">>};
+    {Resp, <<"ThroughputResponse">>};
 
 handle_request(Other, _Payload) ->
     lager:error("amqp control: got unsupported request type (~s)", [Other]),
@@ -138,4 +138,4 @@ schedule_connect(Time) ->
 
 gen_nack() ->
     {ok, Nack} = 'JustAsn':encode('GenNack', #'GenNack'{}),
-    {list_to_binary(Nack), <<"GenNack">>}.
+    {Nack, <<"GenNack">>}.

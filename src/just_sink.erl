@@ -312,7 +312,7 @@ encode(response, GatewayUUID, SegmentUUID, Bin) ->
     {ok, Encoded} = 'JustAsn':encode('SmsResponse', SmsResponse),
     Pbasic = #'P_basic'{content_type = <<"SmsResponse">>, delivery_mode = 2,
                         message_id = uuid:unparse_lower(SegmentUUID)},
-    {list_to_binary(Encoded), Pbasic};
+    {Encoded, Pbasic};
 
 encode(incoming, GatewayUUID, MessageUUID, Bin) ->
     #message{orig = Orig, dest = Dest, body = Body, data_coding = DC,
@@ -331,7 +331,7 @@ encode(incoming, GatewayUUID, MessageUUID, Bin) ->
     {ok, Encoded} = 'JustAsn':encode('IncomingSm', IncomingSm),
     Pbasic = #'P_basic'{content_type = <<"IncomingSm">>, delivery_mode = 2,
                         message_id = uuid:unparse_lower(MessageUUID)},
-    {list_to_binary(Encoded), Pbasic};
+    {Encoded, Pbasic};
 
 encode(receipt, GatewayUUID, ReceiptUUID, Bin) ->
     #receipt{orig = Orig, message_id = MsgID, message_state = MsgState,
@@ -346,7 +346,7 @@ encode(receipt, GatewayUUID, ReceiptUUID, Bin) ->
     {ok, Encoded} = 'JustAsn':encode('ReceiptBatch', ReceiptBatch),
     Pbasic = #'P_basic'{content_type = <<"ReceiptBatch">>, delivery_mode = 2,
                         message_id = uuid:unparse_lower(ReceiptUUID)},
-    {list_to_binary(Encoded), Pbasic}.
+    {Encoded, Pbasic}.
 
 full_addr(#addr{addr = Addr, ton = Ton, npi = Npi}) ->
     #'FullAddr'{addr = Addr, ton = Ton, npi = Npi}.
