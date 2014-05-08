@@ -152,12 +152,12 @@ ConnectionsEntry ::= SEQUENCE {
     cnnType       INTEGER (1..3),
     cnnAddr       IpAddress,
     cnnPort       INTEGER (0..65535),
-    cnnSystemId   DisplayString (SIZE (0..15)),
-    cnnPassword   DisplayString (SIZE (0..8)),
-    cnnSystemType DisplayString (SIZE (0..12)),
+    cnnSystemId   DisplayString (SIZE (0..16)),
+    cnnPassword   DisplayString (SIZE (0..9)),
+    cnnSystemType DisplayString (SIZE (0..13)),
     cnnAddrTon    INTEGER (0..6),
     cnnAddrNpi    INTEGER (0..14),
-    cnnAddrRange  DisplayString (SIZE (0..40)),
+    cnnAddrRange  DisplayString (SIZE (0..41)),
     cnnStatus     RowStatus
 }
 
@@ -194,7 +194,7 @@ cnnPort OBJECT-TYPE
     ::= { connectionsEntry 4 }
 
 cnnSystemId OBJECT-TYPE
-    SYNTAX      DisplayString (SIZE (0..15))
+    SYNTAX      DisplayString (SIZE (0..16))
     ACCESS      read-write
     STATUS      mandatory
     DESCRIPTION
@@ -202,7 +202,7 @@ cnnSystemId OBJECT-TYPE
     ::= { connectionsEntry 5 }
 
 cnnPassword OBJECT-TYPE
-    SYNTAX      DisplayString (SIZE (0..8))
+    SYNTAX      DisplayString (SIZE (0..9))
     ACCESS      read-write
     STATUS      mandatory
     DESCRIPTION
@@ -210,7 +210,7 @@ cnnPassword OBJECT-TYPE
     ::= { connectionsEntry 6 }
 
 cnnSystemType OBJECT-TYPE
-    SYNTAX      DisplayString (SIZE (0..12))
+    SYNTAX      DisplayString (SIZE (0..13))
     ACCESS      read-write
     STATUS      mandatory
     DESCRIPTION
@@ -234,7 +234,7 @@ cnnAddrNpi OBJECT-TYPE
     ::= { connectionsEntry 9 }
 
 cnnAddrRange OBJECT-TYPE
-    SYNTAX      DisplayString (SIZE (0..40))
+    SYNTAX      DisplayString (SIZE (0..41))
     ACCESS      read-write
     STATUS      mandatory
     DESCRIPTION
