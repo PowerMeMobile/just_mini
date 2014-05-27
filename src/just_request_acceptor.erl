@@ -115,9 +115,9 @@ handle_deliver(DTag, MessageId, Payload, St) ->
     case length(ets:match(St#st.processors, {'_', '_', MessageId})) of
         0 ->
             Pid = just_request_processor_sup:start_processor(St#st.sup, St#st.uuid),
-            just_request_processor:process(Pid, Payload, St#st.settings),
             monitor(process, Pid),
             ets:insert(St#st.processors, {Pid, DTag, MessageId}),
+            just_request_processor:process(Pid, Payload, St#st.settings),
             St;
         1 ->
             % a duplicate of a request is being processed at the moment.
