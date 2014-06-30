@@ -49,6 +49,7 @@ init([Gateway, Tables]) ->
     lists:foreach(fun({N, T}) ->
                       toke_drv:new(T),
                       toke_drv:set_cache(T, 100000),
+                      toke_drv:set_df_unit(T, 8),
                       toke_drv:tune(T, 0, 8, 10, [large]),
                       FileName = filename:join(Dir, lists:concat([N, ".tch"])),
                       ok = toke_drv:open(T, FileName, [read, write, create])
