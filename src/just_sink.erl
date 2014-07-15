@@ -299,10 +299,11 @@ maybe_publish_backlog(St) ->
 %% -------------------------------------------------------------------------
 
 encode(response, GatewayUUID, SegmentUUID, Bin) ->
-    #response{batch = BatchUUID, customer = CustomerUUID, dest = Dest,
-              sar_total_segments = Total, segment_results = SegmentResults,
-              accepted_at = {Seconds, _MilliSeconds}} = binary_to_term(Bin),
+    #response{batch = BatchUUID, customer = CustomerUUID,
+              dest = Dest, sar_total_segments = Total,
+              segment_results = SegmentResults} = binary_to_term(Bin),
     SmStatuses = [ sm_status(Dest, Total, SR) || SR <- SegmentResults ],
+    {Seconds, _MilliSeconds} = just_time:precise_time(),
     Timestamp = just_time:unix_time_to_utc_string(Seconds),
     SmsResponse = #'SmsResponse'{id = uuid:unparse_lower(BatchUUID),
                                  gatewayId = uuid:unparse_lower(GatewayUUID),
