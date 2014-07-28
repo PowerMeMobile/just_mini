@@ -1,6 +1,6 @@
 {application, just_mini,
  [{description, "Just3 Engine - mini version"},
-  {vsn, "0.0.1"},
+  {vsn, git},
   {applications, [kernel,
                   stdlib,
                   mnesia,
