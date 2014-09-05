@@ -89,4 +89,4 @@ Allowed values: 0..3, default: 0.
 
 ## smpp_protocol_id
 Default SMPP protocol_id for SUBMIT_SM.
-Allowed values: non-negative integers, defaul: 0.
+Allowed values: non-negative integers, default: 0.
