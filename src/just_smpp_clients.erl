@@ -161,7 +161,7 @@ start_clients([Conn|Conns], St) ->
                         "will try again in 1 second(s)",
                         [St#st.name, Description, Reason]),
             erlang:start_timer(1000, self(), {start, Conn, 1000}),
-            St#st{off = [Conn|St#st.off]}
+            start_clients(Conns, St#st{off = [Conn|St#st.off]})
     end.
 
 start_client(Conn, St) ->
