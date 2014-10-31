@@ -296,7 +296,7 @@ use_tlvs(Settings) ->
 smpp_pdus(Req, Settings) ->
     Orig = Req#request.orig,
     Dest = Req#request.dest,
-    HasUDH = use_tlvs(Settings) andalso
+    HasUDH = (not use_tlvs(Settings)) andalso
              (is_segmented(Req) orelse has_port_addressing(Req)),
     Common = [{service_type, Req#request.service_type},
               {source_addr_ton, Orig#addr.ton},
