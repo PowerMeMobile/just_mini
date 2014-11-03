@@ -290,13 +290,13 @@ is_segmented(Req) ->
 has_port_addressing(Req) ->
     Req#request.port_addressing =/= undefined.
 
-use_tlvs(Settings) ->
-    just_settings:get(smpp_version, Settings) =/= 16#33.
+use_sar_tlv(Settings) ->
+    just_settings:get(sar_method, Settings) =:= sar_tlv.
 
 smpp_pdus(Req, Settings) ->
     Orig = Req#request.orig,
     Dest = Req#request.dest,
-    HasUDH = (not use_tlvs(Settings)) andalso
+    HasUDH = (not use_sar_tlv(Settings)) andalso
              (is_segmented(Req) orelse has_port_addressing(Req)),
     Common = [{service_type, Req#request.service_type},
               {source_addr_ton, Orig#addr.ton},
@@ -328,7 +328,7 @@ smpp_pdu(short, Common, Req, Settings) ->
         true ->
             #port_addressing{dest = DestPort, orig = OrigPort} =
                 Req#request.port_addressing,
-            case use_tlvs(Settings) of
+            case use_sar_tlv(Settings) of
                 true ->
                     [{dest_port, DestPort},
                      {source_port, OrigPort},
@@ -364,7 +364,7 @@ segment_pdu(RefNum, TotalSegments, Seqnum, Req, Payload, Common, Settings) ->
         true ->
             #port_addressing{dest = DestPort, orig = OrigPort} =
                 Req#request.port_addressing,
-            case use_tlvs(Settings) of
+            case use_sar_tlv(Settings) of
                 true ->
                     [{dest_port, DestPort},
                      {source_port, OrigPort},
@@ -379,7 +379,7 @@ segment_pdu(RefNum, TotalSegments, Seqnum, Req, Payload, Common, Settings) ->
                     [{short_message, [length(IEs)|IEs ++ Payload]}|Common]
             end;
         false ->
-            case use_tlvs(Settings) of
+            case use_sar_tlv(Settings) of
                 true ->
                     [{sar_msg_ref_num, RefNum},
                      {sar_total_segments, TotalSegments},
