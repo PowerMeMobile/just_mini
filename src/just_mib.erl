@@ -76,7 +76,7 @@ gateways() ->
                               {value, Type} = snmpa:int_to_enum(cnnType, CnnType),
                               #smpp_connection{id = CnnId,
                                                type = Type,
-                                               addr = list_to_tuple(CnnAddr),
+                                               addr = CnnAddr,
                                                port = CnnPort,
                                                system_id = CnnSystemId,
                                                password = CnnPassword,

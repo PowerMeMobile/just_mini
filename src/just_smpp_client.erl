@@ -95,8 +95,7 @@ enqueue_submit(UUID, Params, Expiry) ->
 to_list(Conn) ->
     #smpp_connection{id = ID, type = Type, addr = Addr, port = Port,
                      system_id = SystemId} = Conn,
-    lists:concat([ID, "_", Type, "_", inet_parse:ntoa(Addr), "_",
-                  Port, "_", SystemId]).
+    lists:concat([ID, "_", Type, "_", Addr, "_", Port, "_", SystemId]).
 
 %% -------------------------------------------------------------------------
 %% gen_server callback functions

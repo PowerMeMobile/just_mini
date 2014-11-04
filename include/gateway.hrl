@@ -1,7 +1,7 @@
 -record(smpp_connection,
         {id          :: integer(),
          type        :: transmitter | receiver | transceiver,
-         addr        :: inet:ip_address(),
+         addr        :: string(),
          port        :: 0..65535,
          system_id   :: string(),
          password    :: string(),

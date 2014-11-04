@@ -1,7 +1,7 @@
 JUST-MIB DEFINITIONS ::= BEGIN
 
 IMPORTS
-    enterprises, OBJECT-TYPE, IpAddress
+    enterprises, OBJECT-TYPE
         FROM SNMPv2-SMI
     DisplayString, RowStatus
         FROM SNMPv2-TC
@@ -150,7 +150,7 @@ connectionsEntry OBJECT-TYPE
 ConnectionsEntry ::= SEQUENCE {
     cnnId         INTEGER,
     cnnType       INTEGER (1..3),
-    cnnAddr       IpAddress,
+    cnnAddr       DisplayString (SIZE (0..255)),
     cnnPort       INTEGER (0..65535),
     cnnSystemId   DisplayString (SIZE (0..16)),
     cnnPassword   DisplayString (SIZE (0..9)),
@@ -178,11 +178,11 @@ cnnType OBJECT-TYPE
     ::= { connectionsEntry 2 }
 
 cnnAddr OBJECT-TYPE
-    SYNTAX      IpAddress
+    SYNTAX      DisplayString (SIZE (0..255))
     ACCESS      read-write
     STATUS      mandatory
     DESCRIPTION
-        "IP address of the SMSC."
+        "Address of the SMSC."
     ::= { connectionsEntry 3 }
 
 cnnPort OBJECT-TYPE
