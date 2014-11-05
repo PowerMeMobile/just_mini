@@ -1,3 +1,11 @@
+[![Build Status](https://travis-ci.org/PowerMeMobile/just_mini.png?branch=master)](https://travis-ci.org/PowerMeMobile/funnel_mini)
+=======
+### Installation & Launching
+
+Use https://github.com/PowerMeMobile/alley-setup/ to quickly get started.
+
+### Gateway settings
+
 ## max_validity_period
 Maximum allowed validity period (in hours).
 Allowed values: positive integers, default: 48.
