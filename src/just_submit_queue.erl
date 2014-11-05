@@ -1,6 +1,7 @@
 -module(just_submit_queue).
 
 -include("gateway.hrl").
+-include_lib("alley_common/include/logging.hrl").
 
 -define(name(UUID), {UUID, submit_queue}).
 -define(pid(UUID), gproc:lookup_local_name(?name(UUID))).
@@ -55,16 +56,16 @@ out(Pid, NotifyMsg) ->
 
 init([Gateway]) ->
     #gateway{uuid = UUID, name = Name} = Gateway,
-    lager:info("Gateway #~s#: initializing submit queue", [Name]),
+    ?log_info("Gateway #~s#: initializing submit queue", [Name]),
     gproc:add_local_name(?name(UUID)),
-    lager:info("Gateway #~s#: initialized submit queue", [Name]),
+    ?log_info("Gateway #~s#: initialized submit queue", [Name]),
     {ok, #st{uuid = UUID, name = Name}}.
 
 terminate(_Reason, _St) ->
     ok.
 
 handle_call(stop, _From, St) ->
-    lager:info("Gateway #~s#: stopped submit queue", [St#st.name]),
+    ?log_info("Gateway #~s#: stopped submit queue", [St#st.name]),
     {stop, normal, ok, St};
 
 handle_call({out, NotifyMsg}, {Pid, _Tag}, St) ->

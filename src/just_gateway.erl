@@ -1,6 +1,7 @@
 -module(just_gateway).
 
 -include("gateway.hrl").
+-include_lib("alley_common/include/logging.hrl").
 
 -define(name(UUID), {UUID, gateway}).
 -define(pid(UUID), gproc:lookup_local_name(?name(UUID))).
@@ -36,14 +37,14 @@ stop(UUID) ->
 init([Gateway]) ->
     #gateway{uuid = UUID, name = Name} = Gateway,
     gproc:add_local_name(?name(UUID)),
-    lager:info("Gateway #~s#: initialized", [Name]),
+    ?log_info("Gateway #~s#: initialized", [Name]),
     {ok, #st{uuid = UUID, name = Name}}.
 
 terminate(_Reason, _St) ->
     ok.
 
 handle_call(stop, _From, St) ->
-    lager:info("Gateway #~s#: stopping", [St#st.name]),
+    ?log_info("Gateway #~s#: stopping", [St#st.name]),
     UUID = St#st.uuid,
     just_request_acceptor:stop(UUID),
     just_scheduler:stop(UUID),
@@ -54,7 +55,7 @@ handle_call(stop, _From, St) ->
     just_sink:stop(UUID, response),
     just_amqp_conn:stop(UUID),
     just_cabinets:stop(UUID),
-    lager:info("Gateway #~s#: stopped", [St#st.name]),
+    ?log_info("Gateway #~s#: stopped", [St#st.name]),
     {stop, normal, ok, St};
 
 handle_call(Request, _From, St) ->

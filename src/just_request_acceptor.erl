@@ -2,6 +2,7 @@
 
 -include("gateway.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
+-include_lib("alley_common/include/logging.hrl").
 
 -define(name(UUID), {UUID, request_acceptor}).
 -define(pid(UUID), gproc:lookup_local_name(?name(UUID))).
@@ -44,26 +45,26 @@ stop(UUID) ->
 
 init([Gateway, Dedup, ProcessorSup]) ->
     #gateway{uuid = UUID, name = Name, settings = Settings} = Gateway,
-    lager:info("Gateway #~s#: initializing request acceptor", [Name]),
+    ?log_info("Gateway #~s#: initializing request acceptor", [Name]),
     gproc:add_local_name(?name(UUID)),
     Queue = just_app:get_env(request_queue_prefix) ++
             binary_to_list(uuid:unparse_lower(UUID)),
-    lager:info("Gateway #~s#: request acceptor will consume from ~s",
+    ?log_info("Gateway #~s#: request acceptor will consume from ~s",
                [Name, Queue]),
     St = setup_chan(#st{uuid = UUID, name = Name, settings = Settings,
                         dedup = Dedup, sup = ProcessorSup,
                         queue = list_to_binary(Queue),
                         processors = ets:new(processors, [])}),
-    lager:info("Gateway #~s#: initialized request acceptor", [Name]),
+    ?log_info("Gateway #~s#: initialized request acceptor", [Name]),
     {ok, St}.
 
 terminate(_Reason, _St) ->
     ok.
 
 handle_call(stop, _From, St) ->
-    lager:info("Gateway #~s#: stopping request acceptor", [St#st.name]),
+    ?log_info("Gateway #~s#: stopping request acceptor", [St#st.name]),
     St1 = close_chan(wait_for_processors(unsubscribe(St))),
-    lager:info("Gateway #~s#: stopped request acceptor", [St#st.name]),
+    ?log_info("Gateway #~s#: stopped request acceptor", [St#st.name]),
     {stop, normal, ok, St1};
 
 handle_call(Request, _From, St) ->
@@ -79,8 +80,8 @@ handle_info({#'basic.deliver'{consumer_tag = CTag} = Deliver, Content},
     #'P_basic'{message_id = MessageId} = Props,
     case just_dedup:is_dup(St#st.dedup, uuid:parse(MessageId)) of
         true ->
-            lager:warning("Gateway #~s#: ignoring duplicate request ~s",
-                          [St#st.name, MessageId]),
+            ?log_warn("Gateway #~s#: ignoring duplicate request ~s",
+                      [St#st.name, MessageId]),
             just_amqp:ack(St#st.chan, DTag),
             {noreply, St};
         false ->
@@ -135,7 +136,7 @@ handle_processor_down(Pid, Reason, St) ->
     end,
     case Reason of
         normal -> ok;
-        _      -> lager:error("Gateway #~s#: failed to process request ~s (~w)",
+        _      -> ?log_error("Gateway #~s#: failed to process request ~s (~w)",
                               [St#st.name, MessageId, Reason])
     end,
     St.

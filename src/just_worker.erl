@@ -2,6 +2,7 @@
 
 -include("persistence.hrl").
 -include_lib("oserl/include/oserl.hrl").
+-include_lib("alley_common/include/logging.hrl").
 
 -behaviour(gen_server).
 
@@ -69,8 +70,8 @@ handle_call(Req, _From, St) ->
 handle_cast({work, ReqUUID}, St) ->
     case toke_drv:get(St#st.request, ReqUUID) of
         not_found ->
-            lager:error("Gateway #~s#: request ~s not found in the hash table",
-                        [St#st.name, uuid:unparse_lower(ReqUUID)]);
+            ?log_error("Gateway #~s#: request ~s not found in the hash table",
+                       [St#st.name, uuid:unparse_lower(ReqUUID)]);
         Bin ->
             Req = binary_to_term(Bin),
             case just_time:precise_time() >= Req#request.expires_at of
@@ -85,8 +86,8 @@ handle_cast({work, ReqUUID}, St) ->
 handle_cast({kill, ReqUUID}, St) ->
     case toke_drv:get(St#st.request, ReqUUID) of
         not_found ->
-            lager:error("Gateway #~s#: request ~s not found in the hash table",
-                        [St#st.name, uuid:unparse_lower(ReqUUID)]);
+            ?log_error("Gateway #~s#: request ~s not found in the hash table",
+                       [St#st.name, uuid:unparse_lower(ReqUUID)]);
         Bin ->
             do_kill(customer, binary_to_term(Bin), ReqUUID, St)
     end,

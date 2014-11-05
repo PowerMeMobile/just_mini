@@ -8,5 +8,7 @@ include/JustAsn.hrl
 include/JUST-MIB.hrl
 src/JustAsn.erl
 src/*.asn1db
+rel/just_mini
 .eunit
 TODO
+TAGS

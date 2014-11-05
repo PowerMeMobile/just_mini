@@ -1,9 +1,9 @@
-%%% TODO: logging.
 -module(just_scheduler).
 
 -include("gateway.hrl").
 -include("customer.hrl").
 -include("persistence.hrl").
+-include_lib("alley_common/include/logging.hrl").
 
 -define(name(UUID), {UUID, scheduler}).
 -define(pid(UUID), gproc:lookup_local_name(?name(UUID))).
@@ -59,24 +59,24 @@ notify(UUID, Customer, Request, Size, AttemptAt) ->
 
 init([Gateway, WorkerSup]) ->
     #gateway{uuid = UUID, name = Name} = Gateway,
-    lager:info("Gateway #~s#: initializing scheduler", [Name]),
+    ?log_info("Gateway #~s#: initializing scheduler", [Name]),
     gproc:add_local_name(?name(UUID)),
     just_customers:subscribe(), % FIXME: use gen_event.
     {PQ, Size, KillList} = init_state(just_cabinets:table(UUID, request)),
-    lager:info("Gateway #~s#: ~w requests in the queue, ~w by undefined customers",
+    ?log_info("Gateway #~s#: ~w requests in the queue, ~w by undefined customers",
                [Name, Size, length(KillList)]),
     St = kill(KillList, #st{uuid = UUID, name = Name, sup = WorkerSup, pq = PQ,
                             workers = ets:new(workers, [])}),
-    lager:info("Gateway #~s#: initialized scheduler", [Name]),
+    ?log_info("Gateway #~s#: initialized scheduler", [Name]),
     {ok, maybe_schedule(St)}.
 
 terminate(_Reason, _St) ->
     ok.
 
 handle_call(stop, _From, St) ->
-    lager:info("Gateway #~s#: stopping scheduler", [St#st.name]),
+    ?log_info("Gateway #~s#: stopping scheduler", [St#st.name]),
     St1 = wait_for_workers(St),
-    lager:info("Gateway #~s#: stopped scheduler", [St#st.name]),
+    ?log_info("Gateway #~s#: stopped scheduler", [St#st.name]),
     {stop, normal, ok, St1};
 
 handle_call(Request, _From, St) ->

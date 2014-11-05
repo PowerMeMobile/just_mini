@@ -1,6 +1,7 @@
 -module(just_smpp_clients).
 
 -include("gateway.hrl").
+-include_lib("alley_common/include/logging.hrl").
 
 -define(name(UUID), {UUID, smpp_clients}).
 -define(pid(UUID), gproc:lookup_local_name(?name(UUID))).
@@ -54,22 +55,22 @@ unthrottled(UUID, Conn) ->
 init([Gateway, ClientSupSup]) ->
     #gateway{uuid = UUID, name = Name, rps = RPS, settings = Settings,
              connections = Connections} = Gateway,
-    lager:info("Gateway #~s#: initializing smpp clients", [Name]),
+    ?log_info("Gateway #~s#: initializing smpp clients", [Name]),
     gproc:add_local_name(?name(UUID)),
     St = start_clients(#st{uuid = UUID, name = Name, rps = RPS,
                            settings = Settings, all = Connections,
                            sup = ClientSupSup, clients = ets:new(clients, [])}),
     update_scheduler(St),
-    lager:info("Gateway #~s#: initialized smpp clients", [Name]),
+    ?log_info("Gateway #~s#: initialized smpp clients", [Name]),
     {ok, St}.
 
 terminate(_Reason, _St) ->
     ok.
 
 handle_call(stop, _From, St) ->
-    lager:info("Gateway #~s#: stopping smpp clients", [St#st.name]),
+    ?log_info("Gateway #~s#: stopping smpp clients", [St#st.name]),
     [ stop_client(Pid) || {Pid, _Conn} <- ets:tab2list(St#st.clients) ],
-    lager:info("Gateway #~s#: stopped smpp clients", [St#st.name]),
+    ?log_info("Gateway #~s#: stopped smpp clients", [St#st.name]),
     {stop, normal, ok, St};
 
 handle_call(Request, _From, St) ->
@@ -90,10 +91,10 @@ handle_cast(Request, St) ->
 
 handle_info({timeout, _TRef, {start, Conn, Delay}}, St) ->
     Description = just_smpp_client:to_list(Conn),
-    lager:info("Gateway #~s#: starting client ~s", [St#st.name, Description]),
+    ?log_info("Gateway #~s#: starting client ~s", [St#st.name, Description]),
     case start_client(Conn, St) of
         {ok, Pid} ->
-            lager:info("Gateway #~s#: started client ~s", [St#st.name, Description]),
+            ?log_info("Gateway #~s#: started client ~s", [St#st.name, Description]),
             monitor(process, Pid),
             ets:insert(St#st.clients, {Pid, Conn}),
             St1 = St#st{on = [Conn|St#st.on], off = St#st.off -- [Conn]},
@@ -102,9 +103,9 @@ handle_info({timeout, _TRef, {start, Conn, Delay}}, St) ->
         {error, Reason} ->
             MaxDelay = just_settings:get(max_reconnect_delay, St#st.settings),
             NewDelay = erlang:min(erlang:max(1000, Delay * 2), MaxDelay),
-            lager:error("Gateway #~s#: could not start client ~s (~p), "
-                        "will try again in ~w second(s)",
-                        [St#st.name, Description, Reason, NewDelay div 1000]),
+            ?log_error("Gateway #~s#: could not start client ~s (~p), "
+                       "will try again in ~w second(s)",
+                       [St#st.name, Description, Reason, NewDelay div 1000]),
             erlang:start_timer(NewDelay, self(), {start, Conn, NewDelay}),
             {noreply, St}
     end;
@@ -113,8 +114,8 @@ handle_info({'DOWN', _MRef, process, Pid, Reason}, St) ->
     [{Pid, Conn}] = ets:lookup(St#st.clients, Pid),
     ets:delete(St#st.clients, Pid),
     Description = just_smpp_client:to_list(Conn),
-    lager:error("Gateway #~s#: client ~s failed (~p)",
-                [St#st.name, Description, Reason]),
+    ?log_error("Gateway #~s#: client ~s failed (~p)",
+               [St#st.name, Description, Reason]),
     erlang:start_timer(0, self(), {start, Conn, 0}),
     St1 = St#st{on = St#st.on -- [Conn], off = [Conn|St#st.off],
                 throttled = St#st.throttled -- [Conn]},
@@ -149,17 +150,17 @@ start_clients([], St) ->
     St;
 start_clients([Conn|Conns], St) ->
     Description = just_smpp_client:to_list(Conn),
-    lager:info("Gateway #~s#: starting client ~s", [St#st.name, Description]),
+    ?log_info("Gateway #~s#: starting client ~s", [St#st.name, Description]),
     case start_client(Conn, St) of
         {ok, Pid} ->
-            lager:info("Gateway #~s#: started client ~s", [St#st.name, Description]),
+            ?log_info("Gateway #~s#: started client ~s", [St#st.name, Description]),
             monitor(process, Pid),
             ets:insert(St#st.clients, {Pid, Conn}),
             start_clients(Conns, St#st{on = [Conn|St#st.on]});
         {error, Reason} ->
-            lager:error("Gateway #~s#: could not start client ~s (~p), "
-                        "will try again in 1 second(s)",
-                        [St#st.name, Description, Reason]),
+            ?log_error("Gateway #~s#: could not start client ~s (~p), "
+                       "will try again in 1 second(s)",
+                       [St#st.name, Description, Reason]),
             erlang:start_timer(1000, self(), {start, Conn, 1000}),
             start_clients(Conns, St#st{off = [Conn|St#st.off]})
     end.

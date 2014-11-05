@@ -2,6 +2,7 @@
 
 -include("gateway.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
+-include_lib("alley_common/include/logging.hrl").
 
 -define(name(UUID), {UUID, amqp_conn}).
 -define(pid(UUID), gproc:lookup_local_name(?name(UUID))).
@@ -43,18 +44,17 @@ open_channel(UUID) ->
 init([Gateway, Sup, Conn]) ->
     #gateway{uuid = UUID, name = Name} = Gateway,
     gproc:add_local_name(?name(UUID)),
-    lager:info("Gateway #~s#: connecting to the AMQP broker", [Name]),
+    ?log_info("Gateway #~s#: connecting to the AMQP broker", [Name]),
     case amqp_gen_connection:connect(Conn) of
         {ok, Conn} ->
-            lager:info("Gateway #~s#: connected to the AMQP broker", [Name]),
+            ?log_info("Gateway #~s#: connected to the AMQP broker", [Name]),
             _MRef = monitor(process, Conn),
             {ok, #st{uuid = UUID, name = Name, sup = Sup, conn = Conn}};
         {error, Error} ->
             % econnrefused, auth_failure (bad username/password),
             % access_refused (wrong vhost).
-            lager:error("Gateway #~s#: could not connect to the AMQP broker (~s), "
-                        "will try again in 1 second(s)",
-                        [Name, Error]),
+            ?log_error("Gateway #~s#: could not connect to the AMQP broker (~s), "
+                       "will try again in 1 second(s)", [Name, Error]),
             erlang:start_timer(1000, self(), {connect, 1000}),
             {ok, #st{uuid = UUID, name = Name, sup = Sup}}
     end.
@@ -67,11 +67,11 @@ handle_call(stop, _From, St) ->
         undefined ->
             ok;
         Conn ->
-            lager:info("Gateway #~s#: disconnecting from the AMQP broker",
-                       [St#st.name]),
+            ?log_info("Gateway #~s#: disconnecting from the AMQP broker",
+                      [St#st.name]),
             amqp_connection:close(Conn),
-            lager:info("Gateway #~s#: disconnected from the AMQP broker",
-                       [St#st.name]),
+            ?log_info("Gateway #~s#: disconnected from the AMQP broker",
+                      [St#st.name]),
             % workaround for a supervisor issue that sometimes logs a shutdown_error if
             % a temporary child exits fractionally early.
             timer:sleep(50)
@@ -100,10 +100,10 @@ handle_cast(Request, St) ->
 
 handle_info({timeout, _TRef, {connect, Delay}}, St) ->
     {ok, _ConnSup, Conn} = just_amqp_conn_sup:start_amqp_connection_sup(St#st.sup),
-    lager:info("Gateway #~s#: connecting to the AMQP broker", [St#st.name]),
+    ?log_info("Gateway #~s#: connecting to the AMQP broker", [St#st.name]),
     case amqp_gen_connection:connect(Conn) of
         {ok, Conn} ->
-            lager:info("Gateway #~s#: connected to the AMQP broker", [St#st.name]),
+            ?log_info("Gateway #~s#: connected to the AMQP broker", [St#st.name]),
             _MRef = monitor(process, Conn),
             [ P ! amqp_conn_ready || P <- St#st.wl ],
             {noreply, St#st{conn = Conn, wl = []}};
@@ -111,16 +111,16 @@ handle_info({timeout, _TRef, {connect, Delay}}, St) ->
             % econnrefused, auth_failure (bad username/password),
             % access_refused (wrong vhost).
             NewDelay = erlang:min(erlang:max(1000, Delay * 2), 30000),
-            lager:error("Gateway #~s#: could not connect to the AMQP broker (~s), "
-                        "will try again in ~w second(s)",
-                        [St#st.name, Error, NewDelay div 1000]),
+            ?log_error("Gateway #~s#: could not connect to the AMQP broker (~s), "
+                       "will try again in ~w second(s)",
+                       [St#st.name, Error, NewDelay div 1000]),
             erlang:start_timer(NewDelay, self(), {connect, NewDelay}),
             {noreply, St}
     end;
 
 handle_info({'DOWN', _MRef, process, _Conn, Info}, St) ->
-    lager:error("Gateway #~s#: AMQP broker connection failed (~w)",
-                [St#st.name, Info]),
+    ?log_error("Gateway #~s#: AMQP broker connection failed (~w)",
+               [St#st.name, Info]),
     erlang:start_timer(0, self(), {connect, 0}),
     {noreply, St#st{conn = undefined}};
 

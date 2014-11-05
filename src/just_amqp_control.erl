@@ -3,6 +3,7 @@
 -behaviour(gen_server).
 
 -include_lib("amqp_client/include/amqp_client.hrl").
+-include_lib("alley_common/include/logging.hrl").
 -include_lib("alley_dto/include/JustAsn.hrl").
 
 %% API exports
@@ -34,13 +35,13 @@ start_link() ->
 
 init([]) ->
     process_flag(trap_exit, true),
-    lager:info("amqp control: initializing"),
+    ?log_info("amqp control: initializing", []),
     schedule_connect(0),
     {ok, #st{}}.
 
 terminate(Reason, St) ->
 	just_amqp:connection_close(St#st.conn),
-    lager:info("amqp control: terminated (~p)", [Reason]).
+    ?log_info("amqp control: terminated (~p)", [Reason]).
 
 handle_call(Call, _From, St) ->
 	{stop, {unexpected_call, Call}, St}.
@@ -53,7 +54,7 @@ handle_info({timeout, _Ref, connect}, St) ->
     case just_amqp:connection_start() of
         {ok, Conn} ->
             link(Conn),
-            lager:info("amqp control: amqp connection up"),
+            ?log_info("amqp control: amqp connection up", []),
             try
                 {ok, Chan} = just_amqp:channel_open(Conn),
                 ControlQueue = list_to_binary(just_app:get_env(control_queue)),
@@ -67,7 +68,7 @@ handle_info({timeout, _Ref, connect}, St) ->
                     {noreply, St#st{conn = Conn}}
             end;
         {error, Reason} ->
-            lager:warning("amqp control: couldn't connect to the broker (~p)", [Reason]),
+            ?log_warn("amqp control: couldn't connect to the broker (~p)", [Reason]),
             schedule_connect(?RECONNECT_INTERVAL),
             {noreply, St}
     end;
@@ -90,7 +91,7 @@ handle_info({#'basic.deliver'{} = Deliver, Content}, St) ->
     {noreply, St};
 
 handle_info({'EXIT', Pid, Reason}, #st{conn = Pid} = St) ->
-    lager:warning("amqp control: amqp connection down (~p)", [Reason]),
+    ?log_warn("amqp control: amqp connection down (~p)", [Reason]),
     schedule_connect(?RECONNECT_INTERVAL),
     {noreply, St#st{conn = undefined, chan = undefined}}.
 
@@ -102,7 +103,7 @@ code_change(_OldVsn, St, _Extra) ->
 %% -------------------------------------------------------------------------
 
 handle_request(<<"ThroughputRequest">>, _Payload) ->
-    lager:info("amqp control: got throughput request"),
+    ?log_info("amqp control: got throughput request", []),
     Slices = lists:map(
         fun({PeriodStart, Counters}) ->
                 #'Slice'{
@@ -130,7 +131,7 @@ handle_request(<<"ThroughputRequest">>, _Payload) ->
     {Resp, <<"ThroughputResponse">>};
 
 handle_request(Other, _Payload) ->
-    lager:error("amqp control: got unsupported request type (~s)", [Other]),
+    ?log_error("amqp control: got unsupported request type (~s)", [Other]),
     gen_nack().
 
 schedule_connect(Time) ->

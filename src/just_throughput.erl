@@ -15,6 +15,8 @@
          handle_info/2,
          code_change/3]).
 
+-include_lib("alley_common/include/logging.hrl").
+
 -define(N_SLICES_TO_STORE, 600).
 
 -type counter() ::
@@ -46,11 +48,11 @@ slices() ->
 
 init([]) ->
     process_flag(trap_exit, true),
-    lager:info("throughput counter: initializing"),
+    ?log_info("throughput counter: initializing", []),
     {ok, #st{}}.
 
 terminate(Reason, _St) ->
-    lager:info("throughput counter: terminated (~p)", [Reason]).
+    ?log_info("throughput counter: terminated (~p)", [Reason]).
 
 handle_call(slices, _From, St) ->
     Reply =

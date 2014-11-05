@@ -2,6 +2,7 @@
 
 -include("gateway.hrl").
 -include("persistence.hrl").
+-include_lib("alley_common/include/logging.hrl").
 -include_lib("alley_dto/include/JustAsn.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
 
@@ -56,34 +57,34 @@ notify(GatewayUUID, Type, AcceptedAt, UUID) ->
 
 init([Gateway, Type]) ->
     #gateway{uuid = UUID, name = Name} = Gateway,
-    lager:info("Gateway #~s#: initializing ~s sink", [Name, Type]),
+    ?log_info("Gateway #~s#: initializing ~s sink", [Name, Type]),
     gproc:add_local_name(?name(UUID, Type)),
     Toke = just_cabinets:table(UUID, Type),
     Backlog = init_state(Toke),
-    lager:info("Gateway #~s#: ~w ~ss in the backlog",
-               [Name, backlog_size(Backlog), Type]),
+    ?log_info("Gateway #~s#: ~w ~ss in the backlog",
+              [Name, backlog_size(Backlog), Type]),
     Key = case Type of
               response -> response_queue;
               incoming -> incoming_queue;
               receipt  -> receipt_queue
           end,
     Queue = list_to_binary(just_app:get_env(Key)),
-    lager:info("Gateway #~s#: ~s sink will publish to ~s",
-               [Name, Type, Queue]),
+    ?log_info("Gateway #~s#: ~s sink will publish to ~s",
+              [Name, Type, Queue]),
     St = setup_chan(#st{uuid = UUID, type = Type, name = Name,
                         backlog = Backlog, queue = Queue, toke = Toke,
                         unconfirmed = ets:new(unconfirmed, [ordered_set])}),
-    lager:info("Gateway #~s#: initialized ~s sink", [Name, Type]),
+    ?log_info("Gateway #~s#: initialized ~s sink", [Name, Type]),
     {ok, maybe_publish_backlog(St)}.
 
 terminate(_Reason, _St) ->
     ok.
 
 handle_call(stop, _From, St) ->
-    lager:info("Gateway #~s#: stopping ~s sink", [St#st.name, St#st.type]),
+    ?log_info("Gateway #~s#: stopping ~s sink", [St#st.name, St#st.type]),
     teardown_chan(St),
     flush_acks(St),
-    lager:info("Gateway #~s#: stopped ~s sink", [St#st.name, St#st.type]),
+    ?log_info("Gateway #~s#: stopped ~s sink", [St#st.name, St#st.type]),
     {stop, normal, ok, St};
 
 handle_call(Request, _From, St) ->
@@ -262,8 +263,8 @@ publish(_AcceptedAt, _UUID, #st{chan = undefined}) ->
 publish(AcceptedAt, UUID, St) ->
     case toke_drv:get(St#st.toke, UUID) of
         not_found ->
-            lager:error("Gateway #~s#: ~s ~s not found in the hash table",
-                        [St#st.name, St#st.type, uuid:unparse_lower(UUID)]),
+            ?log_error("Gateway #~s#: ~s ~s not found in the hash table",
+                       [St#st.name, St#st.type, uuid:unparse_lower(UUID)]),
             true;
         Bin ->
             {Payload, Pbasic} = encode(St#st.type, St#st.uuid, UUID, Bin),
@@ -273,8 +274,8 @@ publish(AcceptedAt, UUID, St) ->
                     ets:insert(St#st.unconfirmed, {Seqno, AcceptedAt, UUID}),
                     true;
                 {error, Reason} ->
-                    lager:error("Gateway #~s#: AMQP error when publishing a ~s (~s)",
-                                [St#st.name, St#st.type, Reason]),
+                    ?log_error("Gateway #~s#: AMQP error when publishing a ~s (~s)",
+                               [St#st.name, St#st.type, Reason]),
                     false
             end
     end.

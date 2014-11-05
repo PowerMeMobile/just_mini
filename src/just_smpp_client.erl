@@ -3,6 +3,7 @@
 -include("gateway.hrl").
 -include("persistence.hrl").
 -include_lib("oserl/include/oserl.hrl").
+-include_lib("alley_common/include/logging.hrl").
 
 -behaviour(gen_server).
 -behaviour(gen_esme_session).
@@ -229,24 +230,24 @@ handle_cast({handle_deliver_sm, SeqNum, Body}, St) ->
     {noreply, St};
 
 handle_cast(handle_unbind, St) ->
-    lager:warning("Gateway #~s#: connection ~s unbound by peer",
-                  [St#st.name, to_list(St#st.conn)]),
+    ?log_warn("Gateway #~s#: connection ~s unbound by peer",
+              [St#st.name, to_list(St#st.conn)]),
     {stop, normal, close_session(St)};
 
 handle_cast({handle_closed, closed}, St) ->
-    lager:error("Gateway #~s#: connection ~s socket closed while bound",
+    ?log_error("Gateway #~s#: connection ~s socket closed while bound",
                 [St#st.name, to_list(St#st.conn)]),
     {stop, normal, St};
 
 handle_cast({handle_closed, Reason}, St) ->
     % some other socket error. shouldn't happen.
-    lager:error("Gateway #~s#: connection ~s socket error while bound (~w)",
+    ?log_error("Gateway #~s#: connection ~s socket error while bound (~w)",
                 [St#st.name, to_list(St#st.conn), Reason]),
     {stop, {socket_error, Reason}, St};
 
 handle_cast({handle_timeout, SeqNum, Ref}, St) ->
-    lager:warning("Gateway #~s#: timeout seq_num: ~p ref: ~p",
-            [St#st.name, SeqNum, Ref]),
+    ?log_warn("Gateway #~s#: timeout seq_num: ~p ref: ~p",
+              [St#st.name, SeqNum, Ref]),
     {noreply, St};
 
 handle_cast(Request, St) ->
@@ -327,14 +328,14 @@ is_throttled(St) ->
 handle_throttling(RTHROTTLED, St) ->
     case {RTHROTTLED, is_throttled(St)} of
         {true, false} ->
-            lager:warning("Gateway #~s#: connection ~s got throttled",
-                          [St#st.name, to_list(St#st.conn)]),
+            ?log_warn("Gateway #~s#: connection ~s got throttled",
+                      [St#st.name, to_list(St#st.conn)]),
             just_smpp_clients:throttled(St#st.uuid, St#st.conn),
             just_submit_metronome:pause(St#st.metronome),
             start_throttled_timer(St#st{wl = []});
         {false, true} ->
-            lager:info("Gateway #~s#: connection ~s unthrottled",
-                       [St#st.name, to_list(St#st.conn)]),
+            ?log_info("Gateway #~s#: connection ~s unthrottled",
+                      [St#st.name, to_list(St#st.conn)]),
             just_smpp_clients:unthrottled(St#st.uuid, St#st.conn),
             just_submit_metronome:resume(St#st.metronome),
             cancel_throttled_timer(St);
@@ -343,8 +344,8 @@ handle_throttling(RTHROTTLED, St) ->
     end.
 
 handle_unthrottle_timeout(St) ->
-    lager:info("Gateway #~s#: connection ~s unthrottled",
-               [St#st.name, to_list(St#st.conn)]),
+    ?log_info("Gateway #~s#: connection ~s unthrottled",
+              [St#st.name, to_list(St#st.conn)]),
     just_smpp_clients:unthrottled(St#st.uuid, St#st.conn),
     just_submit_metronome:resume(St#st.metronome),
     St#st{throttled = false}.

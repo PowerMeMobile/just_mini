@@ -1,6 +1,7 @@
 -module(just_cabinets).
 
 -include("gateway.hrl").
+-include_lib("alley_common/include/logging.hrl").
 
 -define(name(UUID), {UUID, cabinets}).
 -define(pid(UUID), gproc:lookup_local_name(?name(UUID))).
@@ -41,7 +42,7 @@ table(UUID, Name) ->
 
 init([Gateway, Tables]) ->
     #gateway{uuid = UUID, name = Name} = Gateway,
-    lager:info("Gateway #~s#: initializing tokyo hash tables", [Name]),
+    ?log_info("Gateway #~s#: initializing tokyo hash tables", [Name]),
     gproc:add_local_name(?name(UUID)),
     Dir = filename:join(["data", "gateways",
                          binary_to_list(uuid:unparse_lower(UUID))]),
@@ -54,20 +55,20 @@ init([Gateway, Tables]) ->
                       FileName = filename:join(Dir, lists:concat([N, ".tch"])),
                       ok = toke_drv:open(T, FileName, [read, write, create])
                   end, lists:zip(?names, Tables)),
-    lager:info("Gateway #~s#: initialized tokyo hash tables", [Name]),
+    ?log_info("Gateway #~s#: initialized tokyo hash tables", [Name]),
     {ok, #st{uuid = UUID, name = Name, tables = Tables}}.
 
 terminate(_Reason, _St) ->
     ok.
 
 handle_call(stop, _From, St) ->
-    lager:info("Gateway #~s#: stopping tokyo hash tables", [St#st.name]),
+    ?log_info("Gateway #~s#: stopping tokyo hash tables", [St#st.name]),
     lists:foreach(fun(T) ->
                       toke_drv:close(T),
                       toke_drv:delete(T),
                       toke_drv:stop(T)
                   end, St#st.tables),
-    lager:info("Gateway #~s#: stopped tokyo hash tables", [St#st.name]),
+    ?log_info("Gateway #~s#: stopped tokyo hash tables", [St#st.name]),
     {stop, normal, ok, St};
 
 handle_call({table, Name}, _From, St) ->

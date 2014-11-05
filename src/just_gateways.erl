@@ -1,6 +1,7 @@
 -module(just_gateways).
 
 -include("gateway.hrl").
+-include_lib("alley_common/include/logging.hrl").
 
 -behaviour(gen_server).
 
@@ -38,7 +39,7 @@ update() ->
 
 init([GatewaySupSup]) ->
     Gateways = just_mib:gateways(),
-    lager:info("Just: starting ~w gateways", [length(Gateways)]),
+    ?log_info("Just: starting ~w gateways", [length(Gateways)]),
     [ start_gateway(GatewaySupSup, G) || G <- Gateways ],
     {ok, #st{sup = GatewaySupSup, gateways = Gateways}}.
 
@@ -46,7 +47,7 @@ terminate(_Reason, _St) ->
     ok.
 
 handle_call(stop, _From, St) ->
-    lager:info("Just: stopping ~w gateways", [length(St#st.gateways)]),
+    ?log_info("Just: stopping ~w gateways", [length(St#st.gateways)]),
     [ stop_gateway(St#st.sup, G) || G <- St#st.gateways ],
     {stop, normal, ok, St};
 
@@ -56,11 +57,11 @@ handle_call(Request, _From, St) ->
 handle_cast(update, St) ->
     UpToDate = just_mib:gateways(),
     [ begin
-          lager:info("Just: stopping removed gateway #~s#", [G#gateway.name]),
+          ?log_info("Just: stopping removed gateway #~s#", [G#gateway.name]),
           stop_gateway(St#st.sup, G)
       end || G <- St#st.gateways -- UpToDate ],
     [ begin
-          lager:info("Just: starting added gateway #~s#", [G#gateway.name]),
+          ?log_info("Just: starting added gateway #~s#", [G#gateway.name]),
           start_gateway(St#st.sup, G)
       end || G <- UpToDate -- St#st.gateways ],
     {noreply, St#st{gateways = UpToDate}};
