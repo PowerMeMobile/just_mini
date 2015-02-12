@@ -7,7 +7,7 @@
 
 %% API exports.
 -export([start_link/1]).
--export([process/3]).
+-export([process/4]).
 
 %% gen_server exports.
 -export([init/1, terminate/2, handle_call/3, handle_cast/2, handle_info/2,
@@ -28,9 +28,9 @@
 start_link(UUID) ->
     gen_server:start_link(?MODULE, [UUID], []).
 
--spec process(pid(), binary(), just_settings:settings()) -> ok.
-process(Pid, Body, Settings) ->
-    gen_server:cast(Pid, {process, Body, Settings}).
+-spec process(pid(), binary(), binary(), just_settings:settings()) -> ok.
+process(Pid, ContentType, Payload, Settings) ->
+    gen_server:cast(Pid, {process, ContentType, Payload, Settings}).
 
 %% -------------------------------------------------------------------------
 %% gen_server callback functions
@@ -45,15 +45,17 @@ terminate(_Reason, _St) ->
 handle_call(Request, _From, St) ->
     {stop, {unexpected_call, Request}, St}.
 
-handle_cast({process, Body, Settings}, St) ->
+handle_cast({process, ContentType, Payload, Settings}, St) ->
     AcceptedAt = just_time:precise_time(),
-    {ok, SmsRequest} = 'JustAsn':decode('SmsRequest', Body),
-    lists:foreach(fun(R) ->
-                      U = uuid:generate(),
-                      toke_drv:insert(St#st.toke, U, term_to_binary(R)),
-                      just_scheduler:notify(St#st.uuid, R#request.customer, U,
-                                            length(R#request.payload), AcceptedAt)
-                  end, transform_request(SmsRequest, AcceptedAt, Settings)),
+    lists:foreach(
+        fun(R) ->
+            U = uuid:generate(),
+            toke_drv:insert(St#st.toke, U, term_to_binary(R)),
+            just_scheduler:notify(St#st.uuid, R#request.customer, U,
+                                  length(R#request.payload), AcceptedAt)
+        end,
+        transform_request(ContentType, Payload, AcceptedAt, Settings)
+    ),
     {stop, normal, St};
 
 handle_cast(Request, St) ->
@@ -66,27 +68,39 @@ code_change(_OldVsn, St, _Extra) ->
     {ok, St}.
 
 %% -------------------------------------------------------------------------
+%% (ContentType, Payload) -> [#request{}] transformation
+%% -------------------------------------------------------------------------
+
+transform_request(<<"SmsRequest", _>>, Payload, AcceptedAt, Settings) ->
+    transform_asn(Payload, AcceptedAt, Settings).
+
+%% -------------------------------------------------------------------------
 %% #'SmsRequest' -> [#request{}] transformation
 %% -------------------------------------------------------------------------
 
-transform_request(SmsRequest, AcceptedAt, Settings) ->
+transform_asn(Payload, AcceptedAt, Settings) ->
+    {ok, SmsRequest} = 'JustAsn':decode('SmsRequest', Payload),
     #'SmsRequest'{id = Id, customerId = CustomerId,
                   sourceAddr = SourceAddr} = SmsRequest,
     BatchUUID = uuid:parse(list_to_binary(Id)),
     CustomerUUID = uuid:parse(list_to_binary(CustomerId)),
     #'FullAddr'{addr = Addr, ton = Ton, npi = Npi} = SourceAddr,
-    Params = params_to_proplist(SmsRequest#'SmsRequest'.params),
+    Params = params_asn_to_proplist(SmsRequest#'SmsRequest'.params),
     PortAddressing = port_addressing(Params),
-    {Payload, DC} = process_payload(SmsRequest, Params, Settings, PortAddressing),
-    Type = request_type(SmsRequest, Payload),
+    Message = SmsRequest#'SmsRequest'.message,
+    Encoding = SmsRequest#'SmsRequest'.encoding,
+    Type = SmsRequest#'SmsRequest'.type,
+    {Message2, DC} = process_payload(
+        list_to_binary(Message), Encoding, Type, Params, Settings, PortAddressing),
+    Type2 = request_type(Type, Message2),
     VP = ?gv(validity_period, Params, ""),
     ExpiresAt = expiration_time(AcceptedAt, VP, Settings),
     RD = case ?gb(registered_delivery, Params) of true -> 1; false -> 0 end,
     Common = #request{batch = BatchUUID,
                       customer = CustomerUUID,
-                      type = Type,
+                      type = Type2,
                       attempt_once = ?gb(no_retry, Params),
-                      payload = Payload,
+                      payload = Message2,
                       data_coding = DC,
                       orig = #addr{addr = Addr, ton = Ton, npi = Npi},
                       validity_period = VP,
@@ -98,23 +112,23 @@ transform_request(SmsRequest, AcceptedAt, Settings) ->
                       attempt_at = AcceptedAt,
                       expires_at = ExpiresAt,
                       accepted_at = AcceptedAt},
-    complete(Type, Params, Common, SmsRequest#'SmsRequest'.messageIds,
+    complete_asn(Type2, Params, Common, SmsRequest#'SmsRequest'.messageIds,
              element(2, SmsRequest#'SmsRequest'.destAddrs)).
 
-complete(Type, Params, Common, Ids, Addrs) ->
-    complete(Type, Params, Common, Ids, Addrs, []).
+complete_asn(Type, Params, Common, Ids, Addrs) ->
+    complete_asn(Type, Params, Common, Ids, Addrs, []).
 
-complete(_Type, _Params, _Common, [], [], Acc) ->
+complete_asn(_Type, _Params, _Common, [], [], Acc) ->
     Acc;
 
-complete(short, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
+complete_asn(short, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
     #'FullAddr'{addr = Addr, ton = Ton, npi = Npi} = Dest,
     C = Common#request{info = #short_info{orig_msg_id = list_to_binary(Id)},
                        dest = #addr{addr = Addr, ton = Ton, npi = Npi},
                        todo_segments = [1]},
-    complete(short, Params, Common, Ids, Dests, [C|Acc]);
+    complete_asn(short, Params, Common, Ids, Dests, [C|Acc]);
 
-complete(long, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
+complete_asn(long, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
     #'FullAddr'{addr = Addr, ton = Ton, npi = Npi} = Dest,
     {RefNum, _} = random:uniform_s(255, now()),
     Info = #long_info{orig_msg_ids = re:split(Id, ":", [trim, {return, binary}]),
@@ -122,9 +136,9 @@ complete(long, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
     C = Common#request{info = Info,
                        dest = #addr{addr = Addr, ton = Ton, npi = Npi},
                        todo_segments = lists:seq(1, length(Common#request.payload))},
-    complete(long, Params, Common, Ids, Dests, [C|Acc]);
+    complete_asn(long, Params, Common, Ids, Dests, [C|Acc]);
 
-complete(segment, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
+complete_asn(segment, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
     #'FullAddrAndRefNum'{fullAddr = #'FullAddr'{addr = Addr, ton = Ton, npi = Npi},
                          refNum = RefNum} = Dest,
     Info = #segment_info{orig_msg_id = list_to_binary(Id),
@@ -134,24 +148,30 @@ complete(segment, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
     C = Common#request{info = Info,
                        dest = #addr{addr = Addr, ton = Ton, npi = Npi},
                        todo_segments = [1]},
-    complete(segment, Params, Common, Ids, Dests, [C|Acc]).
+    complete_asn(segment, Params, Common, Ids, Dests, [C|Acc]).
+
+params_asn_to_proplist(Params) ->
+    [{list_to_atom(N), V} || #'Param'{name = N, value = {_, V}} <- Params].
 
 %% -------------------------------------------------------------------------
-%% body encoding and splitting
+%% generic body encoding and splitting
 %% -------------------------------------------------------------------------
 
-process_payload(SmsRequest, Params, Settings, PortAddressing) ->
-    {Encoding, DC, Bitness} = encoding_dc_bitness(SmsRequest, Params, Settings),
-    Message = encode_msg(list_to_binary(SmsRequest#'SmsRequest'.message), Encoding),
-    Payload = case SmsRequest#'SmsRequest'.type of
-                  regular -> split_msg(Message, Bitness, PortAddressing);
-                  part    -> [Message]
-              end,
+process_payload(Message, Encoding, Type, Params, Settings, PortAddressing) ->
+    {Encoding2, DC, Bitness} = encoding_dc_bitness(Encoding, Params, Settings),
+    Message2 = encode_msg(Message, Encoding2),
+    Payload =
+        case Type of
+            regular ->
+                split_msg(Message2, Bitness, PortAddressing);
+            part ->
+                [Message2]
+         end,
     {Payload, DC}.
 
-encoding_dc_bitness(SmsRequest, Params, Settings) ->
+encoding_dc_bitness(Encoding, Params, Settings) ->
     {E, DC, B} =
-        case SmsRequest#'SmsRequest'.encoding of
+        case Encoding of
             {text, default} ->
                 {?gs(default_encoding, Settings),
                  ?gs(default_data_coding, Settings),
@@ -203,7 +223,7 @@ split_msg(Msg, Bitness, PortAddressing) ->
     end.
 
 %% -------------------------------------------------------------------------
-%% calculate expiration time
+%% generic calculate expiration time
 %% -------------------------------------------------------------------------
 
 expiration_time(AcceptedAt, VP, Settings) ->
@@ -242,11 +262,8 @@ parse_rtime([Y1,Y2,Mon1,Mon2,D1,D2,H1,H2,Min1,Min2,S1,S2,$0,$0,$0,$R]) ->
     (((Y * 365 + Mon * 31 + D) * 24 + H) * 60 + Min) * 60 + S.
 
 %% -------------------------------------------------------------------------
-%% other private functions
+%% other generic private functions
 %% -------------------------------------------------------------------------
-
-params_to_proplist(Params) ->
-    [ {list_to_atom(N), V} || #'Param'{name = N, value = {_, V}} <- Params ].
 
 port_addressing(Params) ->
     DestPort = ?gv(destination_port, Params),
@@ -256,8 +273,8 @@ port_addressing(Params) ->
         false -> undefined
     end.
 
-request_type(SmsRequest, Payload) ->
-    case {SmsRequest#'SmsRequest'.type, length(Payload)} of
+request_type(Type, Message) ->
+    case {Type, length(Message)} of
         {regular, 1} -> short;
         {regular, _} -> long;
         {part, 1}    -> segment

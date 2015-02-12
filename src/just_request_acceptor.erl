@@ -77,15 +77,15 @@ handle_info({#'basic.deliver'{consumer_tag = CTag} = Deliver, Content},
             #st{ctag = CTag} = St) ->
     #'basic.deliver'{delivery_tag = DTag} = Deliver,
     #amqp_msg{payload = Payload, props = Props} = Content,
-    #'P_basic'{message_id = MessageId} = Props,
-    case just_dedup:is_dup(St#st.dedup, uuid:parse(MessageId)) of
+    #'P_basic'{message_id = MessageId, content_type = CType} = Props,
+    case just_dedup:is_dup(St#st.dedup, MessageId) of
         true ->
             ?log_warn("Gateway #~s#: ignoring duplicate request ~s",
                       [St#st.name, MessageId]),
             just_amqp:ack(St#st.chan, DTag),
             {noreply, St};
         false ->
-            {noreply, handle_deliver(DTag, MessageId, Payload, St)}
+            {noreply, handle_deliver(DTag, MessageId, CType, Payload, St)}
     end;
 
 handle_info({#'basic.deliver'{}, _Content}, St) ->
@@ -112,13 +112,13 @@ code_change(_OldVsn, St, _Extra) ->
 %% handle basic.deliver and processor down
 %% -------------------------------------------------------------------------
 
-handle_deliver(DTag, MessageId, Payload, St) ->
+handle_deliver(DTag, MessageId, ContentType, Payload, St) ->
     case length(ets:match(St#st.processors, {'_', '_', MessageId})) of
         0 ->
             Pid = just_request_processor_sup:start_processor(St#st.sup, St#st.uuid),
             monitor(process, Pid),
             ets:insert(St#st.processors, {Pid, DTag, MessageId}),
-            just_request_processor:process(Pid, Payload, St#st.settings),
+            just_request_processor:process(Pid, ContentType, Payload, St#st.settings),
             St;
         1 ->
             % a duplicate of a request is being processed at the moment.
@@ -129,7 +129,7 @@ handle_deliver(DTag, MessageId, Payload, St) ->
 handle_processor_down(Pid, Reason, St) ->
     [{Pid, DTag, MessageId}] = ets:lookup(St#st.processors, Pid),
     ets:delete(St#st.processors, Pid),
-    just_dedup:insert(St#st.dedup, uuid:parse(MessageId)),
+    just_dedup:insert(St#st.dedup, MessageId),
     case St#st.chan of
         undefined -> ok;
         Chan      -> just_amqp:ack(Chan, DTag)
