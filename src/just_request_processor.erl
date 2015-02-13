@@ -1,6 +1,7 @@
 -module(just_request_processor).
 
 -include_lib("alley_dto/include/JustAsn.hrl").
+-include_lib("alley_dto/include/adto.hrl").
 -include("persistence.hrl").
 
 -behaviour(gen_server).
@@ -29,8 +30,8 @@ start_link(UUID) ->
     gen_server:start_link(?MODULE, [UUID], []).
 
 -spec process(pid(), binary(), binary(), just_settings:settings()) -> ok.
-process(Pid, ContentType, Payload, Settings) ->
-    gen_server:cast(Pid, {process, ContentType, Payload, Settings}).
+process(Pid, ContentType, ReqBin, Settings) ->
+    gen_server:cast(Pid, {process, ContentType, ReqBin, Settings}).
 
 %% -------------------------------------------------------------------------
 %% gen_server callback functions
@@ -45,7 +46,7 @@ terminate(_Reason, _St) ->
 handle_call(Request, _From, St) ->
     {stop, {unexpected_call, Request}, St}.
 
-handle_cast({process, ContentType, Payload, Settings}, St) ->
+handle_cast({process, ContentType, ReqBin, Settings}, St) ->
     AcceptedAt = just_time:precise_time(),
     lists:foreach(
         fun(R) ->
@@ -54,7 +55,7 @@ handle_cast({process, ContentType, Payload, Settings}, St) ->
             just_scheduler:notify(St#st.uuid, R#request.customer, U,
                                   length(R#request.payload), AcceptedAt)
         end,
-        transform_request(ContentType, Payload, AcceptedAt, Settings)
+        transform_request(ContentType, ReqBin, AcceptedAt, Settings)
     ),
     {stop, normal, St};
 
@@ -71,28 +72,30 @@ code_change(_OldVsn, St, _Extra) ->
 %% (ContentType, Payload) -> [#request{}] transformation
 %% -------------------------------------------------------------------------
 
-transform_request(<<"SmsRequest", _>>, Payload, AcceptedAt, Settings) ->
-    transform_asn(Payload, AcceptedAt, Settings).
+transform_request(<<"SmsRequest", _>>, ReqBin, AcceptedAt, Settings) ->
+    asn_transform(ReqBin, AcceptedAt, Settings);
+transform_request(<<"SmsReqV1">>, ReqBin, AcceptedAt, Settings) ->
+    v1_transform(ReqBin, AcceptedAt, Settings).
 
 %% -------------------------------------------------------------------------
 %% #'SmsRequest' -> [#request{}] transformation
 %% -------------------------------------------------------------------------
 
-transform_asn(Payload, AcceptedAt, Settings) ->
-    {ok, SmsRequest} = 'JustAsn':decode('SmsRequest', Payload),
+asn_transform(ReqBin, AcceptedAt, Settings) ->
+    {ok, SmsReq} = 'JustAsn':decode('SmsRequest', ReqBin),
     #'SmsRequest'{id = Id, customerId = CustomerId,
-                  sourceAddr = SourceAddr} = SmsRequest,
+                  sourceAddr = SourceAddr} = SmsReq,
     BatchUUID = uuid:parse(list_to_binary(Id)),
     CustomerUUID = uuid:parse(list_to_binary(CustomerId)),
     #'FullAddr'{addr = Addr, ton = Ton, npi = Npi} = SourceAddr,
-    Params = params_asn_to_proplist(SmsRequest#'SmsRequest'.params),
+    Params = asn_params_to_proplist(SmsReq#'SmsRequest'.params),
     PortAddressing = port_addressing(Params),
-    Message = SmsRequest#'SmsRequest'.message,
-    Encoding = SmsRequest#'SmsRequest'.encoding,
-    Type = SmsRequest#'SmsRequest'.type,
+    Message = SmsReq#'SmsRequest'.message,
+    {_, Encoding} = SmsReq#'SmsRequest'.encoding,
+    Type = SmsReq#'SmsRequest'.type,
     {Message2, DC} = process_payload(
         list_to_binary(Message), Encoding, Type, Params, Settings, PortAddressing),
-    Type2 = request_type(Type, Message2),
+    Type2 = request_type_message(Type, Message2),
     VP = ?gv(validity_period, Params, ""),
     ExpiresAt = expiration_time(AcceptedAt, VP, Settings),
     RD = case ?gb(registered_delivery, Params) of true -> 1; false -> 0 end,
@@ -112,23 +115,23 @@ transform_asn(Payload, AcceptedAt, Settings) ->
                       attempt_at = AcceptedAt,
                       expires_at = ExpiresAt,
                       accepted_at = AcceptedAt},
-    complete_asn(Type2, Params, Common, SmsRequest#'SmsRequest'.messageIds,
-             element(2, SmsRequest#'SmsRequest'.destAddrs)).
+    asn_complete(Type2, Params, Common, SmsReq#'SmsRequest'.messageIds,
+             element(2, SmsReq#'SmsRequest'.destAddrs)).
 
-complete_asn(Type, Params, Common, Ids, Addrs) ->
-    complete_asn(Type, Params, Common, Ids, Addrs, []).
+asn_complete(Type, Params, Common, Ids, Addrs) ->
+    asn_complete(Type, Params, Common, Ids, Addrs, []).
 
-complete_asn(_Type, _Params, _Common, [], [], Acc) ->
+asn_complete(_Type, _Params, _Common, [], [], Acc) ->
     Acc;
 
-complete_asn(short, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
+asn_complete(short, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
     #'FullAddr'{addr = Addr, ton = Ton, npi = Npi} = Dest,
     C = Common#request{info = #short_info{orig_msg_id = list_to_binary(Id)},
                        dest = #addr{addr = Addr, ton = Ton, npi = Npi},
                        todo_segments = [1]},
-    complete_asn(short, Params, Common, Ids, Dests, [C|Acc]);
+    asn_complete(short, Params, Common, Ids, Dests, [C|Acc]);
 
-complete_asn(long, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
+asn_complete(long, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
     #'FullAddr'{addr = Addr, ton = Ton, npi = Npi} = Dest,
     {RefNum, _} = random:uniform_s(255, now()),
     Info = #long_info{orig_msg_ids = re:split(Id, ":", [trim, {return, binary}]),
@@ -136,9 +139,9 @@ complete_asn(long, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
     C = Common#request{info = Info,
                        dest = #addr{addr = Addr, ton = Ton, npi = Npi},
                        todo_segments = lists:seq(1, length(Common#request.payload))},
-    complete_asn(long, Params, Common, Ids, Dests, [C|Acc]);
+    asn_complete(long, Params, Common, Ids, Dests, [C|Acc]);
 
-complete_asn(segment, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
+asn_complete(segment, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
     #'FullAddrAndRefNum'{fullAddr = #'FullAddr'{addr = Addr, ton = Ton, npi = Npi},
                          refNum = RefNum} = Dest,
     Info = #segment_info{orig_msg_id = list_to_binary(Id),
@@ -148,10 +151,97 @@ complete_asn(segment, Params, Common, [Id|Ids], [Dest|Dests], Acc) ->
     C = Common#request{info = Info,
                        dest = #addr{addr = Addr, ton = Ton, npi = Npi},
                        todo_segments = [1]},
-    complete_asn(segment, Params, Common, Ids, Dests, [C|Acc]).
+    asn_complete(segment, Params, Common, Ids, Dests, [C|Acc]).
 
-params_asn_to_proplist(Params) ->
+asn_params_to_proplist(Params) ->
     [{list_to_atom(N), V} || #'Param'{name = N, value = {_, V}} <- Params].
+
+%% -------------------------------------------------------------------------
+%% #sms_req_v1{} -> [#request{}] transformation
+%% -------------------------------------------------------------------------
+
+v1_transform(ReqBin, ReqTime, Settings) ->
+    {ok, SmsReq} = adto:decode(#sms_req_v1{}, ReqBin),
+    io:format("~p, size: ~p sizez: ~p ~n", [SmsReq, size(ReqBin), size(zlib:compress(ReqBin))]),
+    #sms_req_v1{
+        dst_addrs = DstAddrs,
+        in_msg_ids = MsgIds,
+        messages = Messages,
+        encodings = Encodings,
+        paramss = Paramss
+    } = SmsReq,
+    v1_transform(SmsReq, ReqTime, Settings, DstAddrs, MsgIds, Messages, Encodings, Paramss, []).
+
+v1_transform(_, _, _, [], [], [], [], [], Acc) ->
+    lists:reverse(Acc);
+v1_transform(SmsReq, ReqTime, Settings,
+    [DstAddr|DstAddrs], [MsgId|MsgIds], [Msg|Msgs], [Encoding|Encodings], [Params|Paramss], Acc) ->
+    Type = SmsReq#sms_req_v1.type,
+    ReqInfo =
+        case request_type_message_id(Type, MsgId) of
+            short ->
+                [v1_build_short_request(SmsReq, ReqTime, Settings, DstAddr, MsgId, Msg, Encoding, Params)];
+            {long, MsgIds} ->
+                erlang:error(not_implemented);
+                %lists:reverse(v1_build_long_req_infos(SmsReq, ReqTime, Settings ,DstAddr, MsgIds, ));
+            part ->
+                erlang:error(not_implemented)
+                %[v1_build_part_req_info(SmsReq, ReqTime, Settings, DstAddr, MsgId)]
+        end,
+    v1_transform(SmsReq, ReqTime, Settings, DstAddrs, MsgIds, Msgs, Encodings, Paramss, ReqInfo ++ Acc).
+
+v1_build_short_request(
+    #sms_req_v1{
+        req_id = ReqId,
+        customer_id = CustomerId,
+        type = Type,
+        src_addr = SourceAddr
+    }, ReqTime, Settings, DstAddr, MsgId, Message, Encoding, Params) ->
+    BatchUUID = uuid:parse(ReqId),
+    CustomerUUID = uuid:parse(CustomerId),
+
+    Params2 = v1_params_to_proplist(Params),
+    PortAddressing = port_addressing(Params2),
+
+    {Message2, DC} = process_payload(
+        Message, Encoding, Type, Params2, Settings, PortAddressing),
+    Type2 = request_type_message(Type, Message2),
+    VP = ?gv(validity_period, Params2, ""),
+    ExpiresAt = expiration_time(ReqTime, VP, Settings),
+    RD = case ?gb(registered_delivery, Params2) of true -> 1; false -> 0 end,
+
+    #request{
+        batch = BatchUUID,
+        customer = CustomerUUID,
+
+        orig = SourceAddr#addr{addr = binary_to_list(SourceAddr#addr.addr)},
+
+        type = Type2,
+        attempt_at = ReqTime,
+        accepted_at = ReqTime,
+
+        attempt_once = ?gb(no_retry, Params2),
+        payload = Message2,
+        data_coding = DC,
+        validity_period = VP,
+        service_type = ?gv(service_type, Params2),
+        protocol_id = ?gv(protocol_id, Params2),
+        priority_flag = ?gv(priority_flag, Params2),
+        registered_delivery = RD,
+        port_addressing = PortAddressing,
+        expires_at = ExpiresAt,
+
+        info = #short_info{orig_msg_id = MsgId},
+        dest = DstAddr#addr{addr = binary_to_list(DstAddr#addr.addr)},
+        todo_segments = [1]
+    }.
+
+v1_params_to_proplist(Params) ->
+    Fun =
+        fun(V) when is_binary(V) -> binary_to_list(V);
+           (V) -> V
+        end,
+    [{N, Fun(V)} || {N, V} <- Params].
 
 %% -------------------------------------------------------------------------
 %% generic body encoding and splitting
@@ -172,19 +262,19 @@ process_payload(Message, Encoding, Type, Params, Settings, PortAddressing) ->
 encoding_dc_bitness(Encoding, Params, Settings) ->
     {E, DC, B} =
         case Encoding of
-            {text, default} ->
+            default ->
                 {?gs(default_encoding, Settings),
                  ?gs(default_data_coding, Settings),
                  ?gs(default_bitness, Settings)};
-            {text, gsm0338} ->
+            gsm0338 ->
                 {gsm0338, 0, 7};
-            {text, ascii} ->
+            ascii ->
                 {ascii, 1, 7};
-            {text, latin1} ->
+            latin1 ->
                 {latin1, 3, 8};
-            {text, ucs2} ->
+            ucs2 ->
                 {ucs2, 8, 16};
-            {other, Other} ->
+            Other ->
                 {other, Other, 8}
         end,
     {E, ?gv(data_coding, Params, DC), B}.
@@ -273,9 +363,19 @@ port_addressing(Params) ->
         false -> undefined
     end.
 
-request_type(Type, Message) ->
+request_type_message(Type, Message) ->
     case {Type, length(Message)} of
         {regular, 1} -> short;
         {regular, _} -> long;
         {part, 1}    -> segment
+    end.
+
+request_type_message_id(Type, MsgId) ->
+    case {Type, binary:split(MsgId, <<":">>, [global, trim])} of
+        {regular, [MsgId]} ->
+            short;
+        {regular, MsgIds} ->
+            {long, MsgIds};
+        {part, [MsgId]} ->
+            part
     end.

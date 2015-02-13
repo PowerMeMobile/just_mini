@@ -1,9 +1,11 @@
 %%% Records serialized in tokyo cabinet hash tables.
 
--record(addr,
-        {addr :: string(),
-         ton :: non_neg_integer(),
-         npi :: non_neg_integer()}).
+%% -record(addr,
+%%         {addr :: string(),
+%%          ton :: non_neg_integer(),
+%%          npi :: non_neg_integer()}).
+
+-include_lib("alley_dto/include/addr.hrl").
 
 -record(message,
         {orig :: #addr{},
