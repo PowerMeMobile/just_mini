@@ -89,37 +89,38 @@ asn_transform(ReqBin, AcceptedAt, Settings) ->
     CustomerUUID = uuid:parse(list_to_binary(CustomerId)),
     #'FullAddr'{addr = Addr, ton = Ton, npi = Npi} = SourceAddr,
     Params = asn_params_to_proplist(SmsReq#'SmsRequest'.params),
-    PortAddressing = port_addressing(Params),
-    Message = SmsReq#'SmsRequest'.message,
+    SrcPort = ?gv(source_port, Params),
+    DstPort = ?gv(destination_port, Params),
+    PortAddr = port_addressing(SrcPort, DstPort),
+    Msg = SmsReq#'SmsRequest'.message,
     {_, Encoding} = SmsReq#'SmsRequest'.encoding,
     Type = SmsReq#'SmsRequest'.type,
-    {Message2, DC} = process_payload(
-        list_to_binary(Message), Encoding, Type, Params, Settings, PortAddressing),
-    Type2 = request_type_message(Type, Message2),
+    {Msg2, DC} = process_payload(
+        list_to_binary(Msg), Encoding, Type, Params, Settings, PortAddr),
+    Type2 = request_type_message(Type, Msg2),
     VP = ?gv(validity_period, Params, ""),
     ExpiresAt = expiration_time(AcceptedAt, VP, Settings),
     RD = case ?gb(registered_delivery, Params) of true -> 1; false -> 0 end,
-    Common = #request{batch = BatchUUID,
-                      customer = CustomerUUID,
-                      type = Type2,
-                      attempt_once = ?gb(no_retry, Params),
-                      payload = Message2,
-                      data_coding = DC,
-                      orig = #addr{addr = Addr, ton = Ton, npi = Npi},
-                      validity_period = VP,
-                      service_type = ?gv(service_type, Params),
-                      protocol_id = ?gv(protocol_id, Params),
-                      priority_flag = ?gv(priority_flag, Params),
-                      registered_delivery = RD,
-                      port_addressing = PortAddressing,
-                      attempt_at = AcceptedAt,
-                      expires_at = ExpiresAt,
-                      accepted_at = AcceptedAt},
+    Common = #request{
+        batch = BatchUUID,
+        customer = CustomerUUID,
+        type = Type2,
+        attempt_once = ?gb(no_retry, Params),
+        payload = Msg2,
+        data_coding = DC,
+        orig = #addr{addr = Addr, ton = Ton, npi = Npi},
+        validity_period = VP,
+        service_type = ?gv(service_type, Params),
+        protocol_id = ?gv(protocol_id, Params),
+        priority_flag = ?gv(priority_flag, Params),
+        registered_delivery = RD,
+        port_addressing = PortAddr,
+        attempt_at = AcceptedAt,
+        expires_at = ExpiresAt,
+        accepted_at = AcceptedAt
+    },
     asn_complete(Type2, Params, Common, SmsReq#'SmsRequest'.messageIds,
-             element(2, SmsReq#'SmsRequest'.destAddrs)).
-
-asn_complete(Type, Params, Common, Ids, Addrs) ->
-    asn_complete(Type, Params, Common, Ids, Addrs, []).
+             element(2, SmsReq#'SmsRequest'.destAddrs), []).
 
 asn_complete(_Type, _Params, _Common, [], [], Acc) ->
     Acc;
@@ -166,73 +167,81 @@ v1_transform(ReqBin, ReqTime, Settings) ->
     #sms_req_v1{
         dst_addrs = DstAddrs,
         in_msg_ids = MsgIds,
-        messages = Messages,
-        encodings = Encodings,
-        paramss = Paramss
+        messages = Msgs,
+        encodings = Encs,
+        params_s = ParamsS
     } = SmsReq,
-    v1_transform(SmsReq, ReqTime, Settings, DstAddrs, MsgIds, Messages, Encodings, Paramss, []).
+    v1_transform(SmsReq, ReqTime, Settings, DstAddrs, MsgIds, Msgs, Encs, ParamsS, []).
 
 v1_transform(_, _, _, [], [], [], [], [], Acc) ->
     lists:reverse(Acc);
 v1_transform(SmsReq, ReqTime, Settings,
-    [DstAddr|DstAddrs], [MsgId|MsgIds], [Msg|Msgs], [Encoding|Encodings], [Params|Paramss], Acc) ->
-    Type = SmsReq#sms_req_v1.type,
-    ReqInfo =
-        case request_type_message_id(Type, MsgId) of
-            short ->
-                [v1_build_short_request(SmsReq, ReqTime, Settings, DstAddr, MsgId, Msg, Encoding, Params)];
-            {long, MsgIds} ->
-                erlang:error(not_implemented);
-                %lists:reverse(v1_build_long_req_infos(SmsReq, ReqTime, Settings ,DstAddr, MsgIds, ));
-            part ->
-                erlang:error(not_implemented)
-                %[v1_build_part_req_info(SmsReq, ReqTime, Settings, DstAddr, MsgId)]
-        end,
-    v1_transform(SmsReq, ReqTime, Settings, DstAddrs, MsgIds, Msgs, Encodings, Paramss, ReqInfo ++ Acc).
-
-v1_build_short_request(
+    [DstAddr|DstAddrs], [MsgId|MsgIds], [Msg|Msgs], [Enc|Encs], [Params|ParamsS], Acc) ->
     #sms_req_v1{
         req_id = ReqId,
         customer_id = CustomerId,
-        type = Type,
-        src_addr = SourceAddr
-    }, ReqTime, Settings, DstAddr, MsgId, Message, Encoding, Params) ->
+        src_addr = SrcAddr
+    } = SmsReq,
     BatchUUID = uuid:parse(ReqId),
     CustomerUUID = uuid:parse(CustomerId),
-
     Params2 = v1_params_to_proplist(Params),
-    PortAddressing = port_addressing(Params2),
-
-    {Message2, DC} = process_payload(
-        Message, Encoding, Type, Params2, Settings, PortAddressing),
-    Type2 = request_type_message(Type, Message2),
+    SrcPort = ?gv(source_port, Params2, undefined),
+    DstPort = ?gv(destination_port, Params2, undefined),
+    PortAddr = port_addressing(SrcPort, DstPort),
+    Type = SmsReq#sms_req_v1.type,
+    {Msg2, DC} = process_payload(
+        Msg, Enc, Type, Params2, Settings, PortAddr),
+    Type2 = request_type_message(Type, Msg2),
     VP = ?gv(validity_period, Params2, ""),
     ExpiresAt = expiration_time(ReqTime, VP, Settings),
     RD = case ?gb(registered_delivery, Params2) of true -> 1; false -> 0 end,
-
-    #request{
+    Common =  #request{
         batch = BatchUUID,
         customer = CustomerUUID,
-
-        orig = SourceAddr#addr{addr = binary_to_list(SourceAddr#addr.addr)},
-
         type = Type2,
-        attempt_at = ReqTime,
-        accepted_at = ReqTime,
-
         attempt_once = ?gb(no_retry, Params2),
-        payload = Message2,
+        payload = Msg2,
         data_coding = DC,
+        orig = SrcAddr#addr{addr = binary_to_list(SrcAddr#addr.addr)},
         validity_period = VP,
         service_type = ?gv(service_type, Params2),
         protocol_id = ?gv(protocol_id, Params2),
         priority_flag = ?gv(priority_flag, Params2),
         registered_delivery = RD,
-        port_addressing = PortAddressing,
+        port_addressing = PortAddr,
+        attempt_at = ReqTime,
         expires_at = ExpiresAt,
+        accepted_at = ReqTime
+    },
+    Common2 = v1_complete(Type2, Params2, Common, MsgId, DstAddr),
+    v1_transform(SmsReq, ReqTime, Settings, DstAddrs, MsgIds, Msgs, Encs, ParamsS, [Common2 | Acc]).
 
-        info = #short_info{orig_msg_id = MsgId},
+v1_complete(short, _Params, Common, MsgId, DstAddr) ->
+    Common#request{
         dest = DstAddr#addr{addr = binary_to_list(DstAddr#addr.addr)},
+        info = #short_info{orig_msg_id = MsgId},
+        todo_segments = [1]
+    };
+v1_complete(long, _Params, Common, MsgId, DstAddr) ->
+    {RefNum, _} = random:uniform_s(255, now()),
+    Common#request{
+        dest = DstAddr#addr{addr = binary_to_list(DstAddr#addr.addr)},
+        info = #long_info{
+            orig_msg_ids = binary:split(MsgId, <<":">>, [global, trim]),
+            sar_msg_ref_num = RefNum
+        },
+        todo_segments = lists:seq(1, length(Common#request.payload))
+    };
+v1_complete(segment, Params, Common, MsgId, DstAddr) ->
+    RefNum = DstAddr#addr.ref_num,
+    Common#request{
+        dest = DstAddr#addr{addr = binary_to_list(DstAddr#addr.addr), ref_num = undefined},
+        info = #segment_info{
+            orig_msg_id = MsgId,
+            sar_msg_ref_num = RefNum,
+            sar_total_segments = ?gv(sar_total_segments, Params),
+            sar_segment_seqnum = ?gv(sar_segment_seqnum, Params)
+        },
         todo_segments = [1]
     }.
 
@@ -355,11 +364,9 @@ parse_rtime([Y1,Y2,Mon1,Mon2,D1,D2,H1,H2,Min1,Min2,S1,S2,$0,$0,$0,$R]) ->
 %% other generic private functions
 %% -------------------------------------------------------------------------
 
-port_addressing(Params) ->
-    DestPort = ?gv(destination_port, Params),
-    OrigPort = ?gv(source_port, Params),
-    case DestPort =/= undefined andalso OrigPort =/= undefined of
-        true  -> #port_addressing{dest = DestPort, orig = OrigPort};
+port_addressing(SrcPort, DstPort) ->
+    case DstPort =/= undefined andalso SrcPort =/= undefined of
+        true  -> #port_addressing{dest = DstPort, orig = SrcPort};
         false -> undefined
     end.
 
@@ -368,14 +375,4 @@ request_type_message(Type, Message) ->
         {regular, 1} -> short;
         {regular, _} -> long;
         {part, 1}    -> segment
-    end.
-
-request_type_message_id(Type, MsgId) ->
-    case {Type, binary:split(MsgId, <<":">>, [global, trim])} of
-        {regular, [MsgId]} ->
-            short;
-        {regular, MsgIds} ->
-            {long, MsgIds};
-        {part, [MsgId]} ->
-            part
     end.
