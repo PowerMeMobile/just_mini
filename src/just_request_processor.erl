@@ -73,16 +73,21 @@ code_change(_OldVsn, St, _Extra) ->
 %% -------------------------------------------------------------------------
 
 transform_request(<<"SmsRequest", _>>, ReqBin, AcceptedAt, Settings) ->
-    asn_transform(ReqBin, AcceptedAt, Settings);
+    {ok, SmsReq} = 'JustAsn':decode('SmsRequest', ReqBin),
+    asn_transform(SmsReq, AcceptedAt, Settings);
 transform_request(<<"SmsReqV1">>, ReqBin, AcceptedAt, Settings) ->
-    v1_transform(ReqBin, AcceptedAt, Settings).
+    {ok, SmsReq} = adto:decode(#sms_req_v1{}, ReqBin),
+    v1_transform(SmsReq, AcceptedAt, Settings);
+transform_request(<<"SmsReqV1z">>, ReqBinZ, AcceptedAt, Settings) ->
+    ReqBin = zlib:uncompress(ReqBinZ),
+    {ok, SmsReq} = adto:decode(#sms_req_v1{}, ReqBin),
+    v1_transform(SmsReq, AcceptedAt, Settings).
 
 %% -------------------------------------------------------------------------
 %% #'SmsRequest' -> [#request{}] transformation
 %% -------------------------------------------------------------------------
 
-asn_transform(ReqBin, AcceptedAt, Settings) ->
-    {ok, SmsReq} = 'JustAsn':decode('SmsRequest', ReqBin),
+asn_transform(SmsReq, AcceptedAt, Settings) ->
     #'SmsRequest'{id = Id, customerId = CustomerId,
                   sourceAddr = SourceAddr} = SmsReq,
     BatchUUID = uuid:parse(list_to_binary(Id)),
@@ -161,9 +166,7 @@ asn_params_to_proplist(Params) ->
 %% #sms_req_v1{} -> [#request{}] transformation
 %% -------------------------------------------------------------------------
 
-v1_transform(ReqBin, ReqTime, Settings) ->
-    {ok, SmsReq} = adto:decode(#sms_req_v1{}, ReqBin),
-    io:format("~p, size: ~p sizez: ~p ~n", [SmsReq, size(ReqBin), size(zlib:compress(ReqBin))]),
+v1_transform(SmsReq, ReqTime, Settings) ->
     #sms_req_v1{
         dst_addrs = DstAddrs,
         in_msg_ids = MsgIds,
