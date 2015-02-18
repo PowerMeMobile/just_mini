@@ -24,11 +24,12 @@
 -define(gv(Key, Params, Default), proplists:get_value(Key, Params, Default)).
 -define(gs(Key, Settings), just_settings:get(Key, Settings)).
 
-%% FIXME: LEGACY ERROR CODES.
--define(ERROR_TIMEOUT,  -1).
--define(ERROR_CLOSED,   -2).
--define(ERROR_EXPIRED,  -6).
--define(ERROR_CUSTOMER, -8).
+%% Keep in sync with k_sms_response_handler.erl
+-define(ERROR_TIMEOUT,  16#000000400).
+-define(ERROR_CLOSED,   16#000000401).
+-define(ERROR_EXPIRED,  16#000000402).
+-define(ERROR_CUSTOMER, 16#000000403).
+-define(ERROR_BLOCKED,  16#000000404).
 
 -record(st, {uuid :: binary(),
              name :: string(),
@@ -78,7 +79,12 @@ handle_cast({work, ReqUUID}, St) ->
                 true ->
                     do_kill(expired, Req, ReqUUID, St);
                 false ->
-                    do_work(Req, ReqUUID, St)
+                    case just_request_blocker:is_blocked(Req#request.batch) of
+                        true ->
+                            do_kill(blocked, Req, ReqUUID, St);
+                        false ->
+                            do_work(Req, ReqUUID, St)
+                    end
             end
     end,
     {stop, normal, St};
@@ -132,7 +138,8 @@ do_work(Req, ReqUUID, St) ->
 do_kill(Reason, Req, ReqUUID, St) ->
     Code = case Reason of
                expired  -> ?ERROR_EXPIRED;
-               customer -> ?ERROR_CUSTOMER
+               customer -> ?ERROR_CUSTOMER;
+               blocked  -> ?ERROR_BLOCKED
            end,
     SegNums = Req#request.todo_segments,
     SegNumsReplies = [ {SegNum, {error, Code}} || SegNum <- SegNums ],

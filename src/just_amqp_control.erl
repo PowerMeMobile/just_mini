@@ -4,6 +4,7 @@
 
 -include_lib("amqp_client/include/amqp_client.hrl").
 -include_lib("alley_common/include/logging.hrl").
+-include_lib("alley_dto/include/common_dto.hrl").
 -include_lib("alley_dto/include/JustAsn.hrl").
 
 %% API exports
@@ -129,6 +130,32 @@ handle_request(<<"ThroughputRequest">>, _Payload) ->
     AsnResp = #'ThroughputResponse'{slices = Slices},
     {ok, Resp} = 'JustAsn':encode('ThroughputResponse', AsnResp),
     {Resp, <<"ThroughputResponse">>};
+
+handle_request(<<"BlockReqV1">>, ReqBin) ->
+    {ok, Req} = adto:decode(#block_req_v1{}, ReqBin),
+    ?log_info("amqp control: got ~p", [Req]),
+    ReqId = Req#block_req_v1.req_id,
+    BatchUuid = uuid:parse(Req#block_req_v1.sms_req_id),
+    Result = just_request_blocker:block(BatchUuid),
+    Resp = #block_resp_v1{
+        req_id = ReqId,
+        result = Result
+    },
+    {ok, RespBin} = adto:encode(Resp),
+    {RespBin, <<"BlockRespV1">>};
+
+handle_request(<<"UnblockReqV1">>, ReqBin) ->
+    {ok, Req} = adto:decode(#unblock_req_v1{}, ReqBin),
+    ?log_info("amqp control: got ~p", [Req]),
+    ReqId = Req#unblock_req_v1.req_id,
+    BatchUuid = uuid:parse(Req#unblock_req_v1.sms_req_id),
+    Result = just_request_blocker:unblock(BatchUuid),
+    Resp = #unblock_resp_v1{
+        req_id = ReqId,
+        result = Result
+    },
+    {ok, RespBin} = adto:encode(Resp),
+    {RespBin, <<"UnblockRespV1">>};
 
 handle_request(Other, _Payload) ->
     ?log_error("amqp control: got unsupported request type (~s)", [Other]),
