@@ -10,7 +10,7 @@
 -export([stop/0, update/0]).
 
 %% Support API.
--export([list_gateways/0, start_gateway/1, stop_gateway/1]).
+-export([fetch_all/0, start_gateway/1, stop_gateway/1]).
 
 %% gen_server exports.
 -export([init/1, terminate/2, handle_call/3, handle_cast/2, handle_info/2,
@@ -36,8 +36,8 @@ stop() ->
 update() ->
     gen_server:cast(?MODULE, update).
 
--spec list_gateways() -> [#gateway{}].
-list_gateways() ->
+-spec fetch_all() -> [#gateway{}].
+fetch_all() ->
     gen_server:call(?MODULE, list_gateways, 50000).
 
 -spec start_gateway(binary()) ->
