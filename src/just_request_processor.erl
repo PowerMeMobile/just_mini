@@ -169,7 +169,7 @@ asn_params_to_proplist(Params) ->
 v1_transform(SmsReq, ReqTime, Settings) ->
     #sms_req_v1{
         dst_addrs = DstAddrs,
-        in_msg_ids = MsgIds,
+        msg_ids = MsgIds,
         messages = Msgs,
         encodings = Encs,
         params_s = ParamsS
