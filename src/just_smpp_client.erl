@@ -458,15 +458,14 @@ extract_sar_info(Body) ->
 
 decode_text(DC, Text) when DC =:= 0; DC =:= 16; DC =:= 240 ->
     % gsm 0338.
-    gsm0338:to_utf8(Text);
+    {valid, Decoded} = gsm0338:to_utf8(Text),
+    Decoded;
 decode_text(3, Text) ->
     % latin1.
-    {ok, Decoded} = iconverl:conv("utf-8//IGNORE", "latin1", Text),
-    Decoded;
+    unicode:characters_to_binary(Text, latin1, utf8);
 decode_text(DC, Text) when DC =:= 8; DC =:= 24 ->
     % ucs-2be.
-    {ok, Decoded} = iconverl:conv("utf-8//IGNORE", "ucs-2be", Text),
-    Decoded;
+    unicode:characters_to_binary(Text, utf16, utf8);
 decode_text(_, Text) ->
     % 8-bit binary or ascii or anything else.
     Text.

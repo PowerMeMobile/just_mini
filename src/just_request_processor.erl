@@ -292,15 +292,14 @@ encoding_dc_bitness(Encoding, Params, Settings) ->
     {E, ?gv(data_coding, Params, DC), B}.
 
 encode_msg(Msg, gsm0338) ->
-    gsm0338:from_utf8(Msg);
+    {valid, Encoded} = gsm0338:from_utf8(Msg),
+    Encoded;
 encode_msg(Msg, ascii) ->
     Msg;
 encode_msg(Msg, latin1) ->
-    {ok, Encoded} = iconverl:conv("latin1//IGNORE", "utf-8", Msg),
-    Encoded;
+    unicode:characters_to_binary(Msg, utf8, latin1);
 encode_msg(Msg, ucs2) ->
-    {ok, Encoded} = iconverl:conv("ucs-2be//IGNORE", "utf-8", Msg),
-    Encoded;
+    unicode:characters_to_binary(Msg, utf8, utf16);
 encode_msg(Msg, other) ->
     Msg.
 
