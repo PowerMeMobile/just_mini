@@ -168,18 +168,27 @@ asn_params_to_proplist(Params) ->
 
 v1_transform(SmsReq, ReqTime, Settings) ->
     #sms_req_v1{
+        message = Msg,
+        encoding = Enc,
+        params = Params,
         dst_addrs = DstAddrs,
         msg_ids = MsgIds,
-        messages = Msgs,
-        encodings = Encs,
-        params_s = ParamsS
+        messages = Msgs
     } = SmsReq,
-    v1_transform(SmsReq, ReqTime, Settings, DstAddrs, MsgIds, Msgs, Encs, ParamsS, []).
+    Msgs2 = case Msgs of
+                undefined ->
+                    %% one message many recipients case
+                    Dup = length(DstAddrs),
+                    lists:duplicate(Dup, Msg);
+                _ ->
+                    Msgs
+            end,
+    v1_transform(SmsReq, ReqTime, Settings, DstAddrs, MsgIds, Msgs2, Enc, Params, []).
 
-v1_transform(_, _, _, [], [], [], [], [], Acc) ->
+v1_transform(_SmsReq, _ReqTime, _Settings, [], [], [], _Enc, _Params, Acc) ->
     lists:reverse(Acc);
 v1_transform(SmsReq, ReqTime, Settings,
-    [DstAddr|DstAddrs], [MsgId|MsgIds], [Msg|Msgs], [Enc|Encs], [Params|ParamsS], Acc) ->
+    [DstAddr|DstAddrs], [MsgId|MsgIds], [Msg|Msgs], Enc, Params, Acc) ->
     #sms_req_v1{
         req_id = ReqId,
         customer_id = CustomerId,
@@ -217,7 +226,7 @@ v1_transform(SmsReq, ReqTime, Settings,
         accepted_at = ReqTime
     },
     Common2 = v1_complete(Type2, Params2, Common, MsgId, DstAddr),
-    v1_transform(SmsReq, ReqTime, Settings, DstAddrs, MsgIds, Msgs, Encs, ParamsS, [Common2 | Acc]).
+    v1_transform(SmsReq, ReqTime, Settings, DstAddrs, MsgIds, Msgs, Enc, Params, [Common2 | Acc]).
 
 v1_complete(short, _Params, Common, MsgId, DstAddr) ->
     Common#request{
