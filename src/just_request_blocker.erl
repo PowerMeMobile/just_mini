@@ -89,7 +89,7 @@ terminate(Reason, St) ->
     toke_drv:close(St#st.toke),
     toke_drv:delete(St#st.toke),
     toke_drv:stop(St#st.toke),
-    ?log_info("Request blocker: terminated (~P)", [Reason]).
+    ?log_info("Request blocker: terminated (~p)", [Reason]).
 
 handle_call({block, BatchUuid}, _From, St) ->
     {S, MS} = just_time:precise_time(),
