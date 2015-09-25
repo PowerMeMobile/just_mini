@@ -77,10 +77,7 @@ init([]) ->
     process_flag(trap_exit, true),
     ?log_info("Request blocker: initializing", []),
     {ok, Toke} = toke_drv:start_link(),
-    ok = toke_drv:new(Toke),
-    ok = toke_drv:set_cache(Toke, 1000),
-    ok = toke_drv:set_df_unit(Toke, 8),
-    ok = toke_drv:open(Toke, ?TCH_FILE, [read, write, create]),
+    ok = init_cabinet(Toke, ?TCH_FILE),
     {Index, Size} = init_state(Toke),
     {ok, cut_overhead(
         #st{toke = Toke, index = Index, size = Size, max = 1000})}.
@@ -156,4 +153,30 @@ cut_overhead(St) ->
             cut_overhead(St#st{index = Index, size = St#st.size - length(Uuids)});
         false ->
             St
+    end.
+
+init_cabinet(Toke, FileName) ->
+    NewRes = toke_drv:new(Toke),
+    SetCacheRes = toke_drv:set_cache(Toke, 1000),
+    SetDfUnitRes = toke_drv:set_df_unit(Toke, 8),
+    OpenRes = toke_drv:open(Toke, FileName, [read, write, create]),
+    case OpenRes of
+        ok -> ok;
+        _Error ->
+            %% tokyo file is corrupted. try to recover...
+            ?log_error("Request blocker: tokyo hash table ~s open failed with results: ~p", [
+                FileName, [
+                    {new, NewRes},
+                    {set_cache, SetCacheRes},
+                    {set_df_unit, SetDfUnitRes},
+                    {open, OpenRes}
+                ]]),
+                RootName = filename:rootname(FileName, ".tch"),
+                Timestamp = "20" ++
+                    just_time:unix_time_to_utc_string(just_time:unix_time()),
+                BakName = lists:concat([RootName, "-", Timestamp, ".tch"]),
+                ?log_error("Request blocker: renaming tokyo hash table ~s to ~s",
+                    [FileName, BakName]),
+                ok = file:rename(FileName, BakName),
+                ok = toke_drv:open(Toke, FileName, [read, write, create])
     end.

@@ -48,12 +48,8 @@ init([Gateway, Tables]) ->
                          binary_to_list(uuid:unparse_lower(UUID))]),
     file:make_dir(Dir),
     lists:foreach(fun({N, T}) ->
-                      toke_drv:new(T),
-                      toke_drv:set_cache(T, 100000),
-                      toke_drv:set_df_unit(T, 8),
-                      toke_drv:tune(T, 0, 8, 10, [large]),
                       FileName = filename:join(Dir, lists:concat([N, ".tch"])),
-                      ok = toke_drv:open(T, FileName, [read, write, create])
+                      ok = init_cabinet(T, FileName, Name)
                   end, lists:zip(?names, Tables)),
     ?log_info("Gateway #~s#: initialized tokyo hash tables", [Name]),
     {ok, #st{uuid = UUID, name = Name, tables = Tables}}.
@@ -85,3 +81,35 @@ handle_info(Info, St) ->
 
 code_change(_OldVsn, St, _Extra) ->
     {ok, St}.
+
+%% -------------------------------------------------------------------------
+%% Internal
+%% -------------------------------------------------------------------------
+
+init_cabinet(Toke, FileName, GatewayName) ->
+    NewRes = toke_drv:new(Toke),
+    SetCacheRes = toke_drv:set_cache(Toke, 100000),
+    SetDfUnitRes = toke_drv:set_df_unit(Toke, 8),
+    TuneRes = toke_drv:tune(Toke, 0, 8, 10, [large]),
+    OpenRes = toke_drv:open(Toke, FileName, [read, write, create]),
+    case OpenRes of
+        ok -> ok;
+        _Error ->
+            %% tokyo file is corrupted. try to recover...
+            ?log_error("Gateway #~s#: tokyo hash table ~s open failed with results: ~p", [
+                GatewayName, FileName, [
+                    {new, NewRes},
+                    {set_cache, SetCacheRes},
+                    {set_df_unit, SetDfUnitRes},
+                    {tune, TuneRes},
+                    {open, OpenRes}
+                ]]),
+                RootName = filename:rootname(FileName, ".tch"),
+                Timestamp = "20" ++
+                    just_time:unix_time_to_utc_string(just_time:unix_time()),
+                BakName = lists:concat([RootName, "-", Timestamp, ".tch"]),
+                ?log_error("Gateway #~s#: renaming tokyo hash table ~s to ~s",
+                    [GatewayName, FileName, BakName]),
+                ok = file:rename(FileName, BakName),
+                ok = toke_drv:open(Toke, FileName, [read, write, create])
+    end.
