@@ -1,9 +1,12 @@
 -module(just_helpers).
 
--export([split_binary/2]).
+-export([
+    split_binary/2,
+    hostname/0
+]).
 
 %% -------------------------------------------------------------------------
-%% binaries
+%% API
 %% -------------------------------------------------------------------------
 
 -spec split_binary(binary(), pos_integer()) -> [binary()].
@@ -19,4 +22,13 @@ split_binary(Bin, Len, Acc) ->
         _ ->
             {Bin1, Bin2} = erlang:split_binary(Bin, Len),
             split_binary(Bin2, Len, [Bin1 | Acc])
+    end.
+
+-spec hostname() -> string().
+hostname() ->
+    case inet:gethostname() of
+        {ok, Hostname} ->
+            Hostname;
+        _ ->
+            "N/A"
     end.

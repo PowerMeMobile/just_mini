@@ -2,6 +2,7 @@
 
 -behaviour(gen_server).
 
+-include("gateway.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
 -include_lib("alley_common/include/logging.hrl").
 -include_lib("alley_dto/include/common_dto.hrl").
@@ -157,6 +158,51 @@ handle_request(<<"UnblockReqV1">>, ReqBin) ->
     {ok, RespBin} = adto:encode(Resp),
     {RespBin, <<"UnblockRespV1">>};
 
+handle_request(<<"GatewayStatesReqV1">>, ReqBin) ->
+    {ok, Req} = adto:decode(#gateway_states_req_v1{}, ReqBin),
+    ?log_info("amqp control: got ~p", [Req]),
+    ReqId = Req#gateway_states_req_v1.req_id,
+    Result =
+        case just_gateways:get_gateway_states() of
+            {ok, States} ->
+                StatesV1 = [gateway_state_to_v1(GS) || GS <- States],
+                {ok, StatesV1};
+            {error, Reason} ->
+                {error, Reason}
+        end,
+    Resp = #gateway_states_resp_v1{
+        req_id = ReqId,
+        result = Result
+    },
+    {ok, RespBin} = adto:encode(Resp),
+    {RespBin, <<"GatewayStatesRespV1">>};
+
+handle_request(<<"StartGatewayReqV1">>, ReqBin) ->
+    {ok, Req} = adto:decode(#start_gateway_req_v1{}, ReqBin),
+    ?log_info("amqp control: got ~p", [Req]),
+    ReqId = Req#start_gateway_req_v1.req_id,
+    GUuid = uuid:parse(Req#start_gateway_req_v1.gateway_id),
+    Result = just_gateways:start_gateway(GUuid),
+    Resp = #start_gateway_resp_v1{
+        req_id = ReqId,
+        result = Result
+    },
+    {ok, RespBin} = adto:encode(Resp),
+    {RespBin, <<"StartGatewayRespV1">>};
+
+handle_request(<<"StopGatewayReqV1">>, ReqBin) ->
+    {ok, Req} = adto:decode(#stop_gateway_req_v1{}, ReqBin),
+    ?log_info("amqp control: got ~p", [Req]),
+    ReqId = Req#stop_gateway_req_v1.req_id,
+    GUuid = uuid:parse(Req#stop_gateway_req_v1.gateway_id),
+    Result = just_gateways:stop_gateway(GUuid),
+    Resp = #stop_gateway_resp_v1{
+        req_id = ReqId,
+        result = Result
+    },
+    {ok, RespBin} = adto:encode(Resp),
+    {RespBin, <<"StopGatewayRespV1">>};
+
 handle_request(Other, _Payload) ->
     ?log_error("amqp control: got unsupported request type (~s)", [Other]),
     gen_nack().
@@ -167,3 +213,41 @@ schedule_connect(Time) ->
 gen_nack() ->
     {ok, Nack} = 'JustAsn':encode('GenNack', #'GenNack'{}),
     {Nack, <<"GenNack">>}.
+
+gateway_state_to_v1(GS) ->
+    #gateway_state{
+        uuid = Uuid,
+        name = Name,
+        host = Host,
+        state = State,
+        connections = CSs
+    } = GS,
+    #gateway_state_v1{
+        id = uuid:unparse(Uuid),
+        name = list_to_binary(Name),
+        host = list_to_binary(Host),
+        state = State,
+        connections = [connection_state_to_v1(CS) || CS <- CSs]
+    }.
+
+connection_state_to_v1(CS) ->
+    #connection_state{
+        id = Id,
+        type = Type,
+        addr = Addr,
+        port = Port,
+        system_id = SystemId,
+        password = Password,
+        system_type = SystemType,
+        state = State
+    } = CS,
+    #connection_state_v1{
+        id = Id,
+        host = list_to_binary(Addr),
+        port = Port,
+        bind_type = Type,
+        system_id = list_to_binary(SystemId),
+        password = list_to_binary(Password),
+        system_type = list_to_binary(SystemType),
+        state = State
+    }.

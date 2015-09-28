@@ -10,7 +10,7 @@
 
 %% API exports.
 -export([start_link/2]).
--export([stop/1, throttled/2, unthrottled/2]).
+-export([stop/1, throttled/2, unthrottled/2, get_connected/1]).
 
 %% gen_server exports.
 -export([init/1, terminate/2, handle_cast/2, handle_call/3, handle_info/2,
@@ -48,6 +48,10 @@ throttled(UUID, Conn) ->
 unthrottled(UUID, Conn) ->
     gen_server:cast(?pid(UUID), {unthrottled, Conn}).
 
+-spec get_connected(binary()) -> {ok, [#smpp_connection{}]} | {error, any()}.
+get_connected(UUID) ->
+    gen_server:call(?pid(UUID), get_connected).
+
 %% -------------------------------------------------------------------------
 %% gen_server callback functions
 %% -------------------------------------------------------------------------
@@ -72,6 +76,9 @@ handle_call(stop, _From, St) ->
     [ stop_client(Pid) || {Pid, _Conn} <- ets:tab2list(St#st.clients) ],
     ?log_info("Gateway #~s#: stopped smpp clients", [St#st.name]),
     {stop, normal, ok, St};
+
+handle_call(get_connected, _From, St) ->
+    {reply, {ok, St#st.on}, St};
 
 handle_call(Request, _From, St) ->
     {stop, {unexpected_call, Request}, St}.
