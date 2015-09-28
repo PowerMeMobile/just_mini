@@ -191,7 +191,7 @@ v1_transform(SmsReq, ReqTime, Settings,
     [DstAddr|DstAddrs], [MsgId|MsgIds], [Msg|Msgs], Enc, Params, Acc) ->
     #sms_req_v1{
         req_id = ReqId,
-        customer_id = CustomerId,
+        customer_uuid = CustomerId,
         src_addr = SrcAddr
     } = SmsReq,
     BatchUUID = uuid:parse(ReqId),
