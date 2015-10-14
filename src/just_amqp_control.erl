@@ -165,8 +165,7 @@ handle_request(<<"GatewayStatesReqV1">>, ReqBin) ->
     Result =
         case just_gateways:get_gateway_states() of
             {ok, States} ->
-                StatesV1 = [gateway_state_to_v1(GS) || GS <- States],
-                {ok, StatesV1};
+                [gateway_state_to_v1(GS) || GS <- States];
             {error, Reason} ->
                 {error, Reason}
         end,
