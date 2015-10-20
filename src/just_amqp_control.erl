@@ -176,6 +176,25 @@ handle_request(<<"GatewayStatesReqV1">>, ReqBin) ->
     {ok, RespBin} = adto:encode(Resp),
     {RespBin, <<"GatewayStatesRespV1">>};
 
+handle_request(<<"GatewayStateReqV1">>, ReqBin) ->
+    {ok, Req} = adto:decode(#gateway_state_req_v1{}, ReqBin),
+    ?log_info("amqp control: got ~p", [Req]),
+    ReqId = Req#gateway_state_req_v1.req_id,
+    GUuid = uuid:parse(Req#gateway_state_req_v1.gateway_id),
+    Result =
+        case just_gateways:get_gateway_state(GUuid) of
+            {ok, State} ->
+                gateway_state_to_v1(State);
+            {error, Reason} ->
+                {error, Reason}
+        end,
+    Resp = #gateway_state_resp_v1{
+        req_id = ReqId,
+        result = Result
+    },
+    {ok, RespBin} = adto:encode(Resp),
+    {RespBin, <<"GatewayStateRespV1">>};
+
 handle_request(<<"StartGatewayReqV1">>, ReqBin) ->
     {ok, Req} = adto:decode(#start_gateway_req_v1{}, ReqBin),
     ?log_info("amqp control: got ~p", [Req]),

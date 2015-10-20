@@ -10,7 +10,13 @@
 -export([stop/0, update/0]).
 
 %% Support API.
--export([get_gateways/0, get_gateway_states/0, start_gateway/1, stop_gateway/1]).
+-export([
+    get_gateways/0,
+    get_gateway_states/0,
+    get_gateway_state/1,
+    start_gateway/1,
+    stop_gateway/1
+]).
 
 %% gen_server exports.
 -export([init/1, terminate/2, handle_call/3, handle_cast/2, handle_info/2,
@@ -47,6 +53,20 @@ get_gateway_states() ->
     {ok, StartedGs} = get_gateways(),
     States = build_gateway_states(Hostname, AllGs, StartedGs),
     {ok, States}.
+
+-spec get_gateway_state(binary()) ->
+    {ok, #gateway_state{}} | {error, not_found}.
+get_gateway_state(Uuid) ->
+    Hostname = just_helpers:hostname(),
+    AllGs = just_mib:gateways(),
+    case lists:keyfind(Uuid, #gateway.uuid, AllGs) of
+        false ->
+            {error, not_found};
+        G ->
+            {ok, StartedGs} = get_gateways(),
+            State = build_gateway_state(G, Hostname, StartedGs),
+            {ok, State}
+    end.
 
 -spec start_gateway(binary()) ->
     ok | {error, already_started} | {error, not_found}.
