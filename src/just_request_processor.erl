@@ -306,9 +306,21 @@ encode_msg(Msg, gsm0338) ->
 encode_msg(Msg, ascii) ->
     Msg;
 encode_msg(Msg, latin1) ->
-    unicode:characters_to_binary(Msg, utf8, latin1);
+    %% best-effort encoding
+    case unicode:characters_to_binary(Msg, utf8, latin1) of
+        {_, _, Binary} ->
+            Binary;
+        Encoded ->
+            Encoded
+    end;
 encode_msg(Msg, ucs2) ->
-    unicode:characters_to_binary(Msg, utf8, utf16);
+    %% best-effort encoding
+    case unicode:characters_to_binary(Msg, utf8, utf16) of
+        {_, _, Binary} ->
+            Binary;
+        Encoded ->
+            Encoded
+    end;
 encode_msg(Msg, other) ->
     Msg.
 
