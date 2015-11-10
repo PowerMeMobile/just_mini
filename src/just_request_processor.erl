@@ -308,16 +308,16 @@ encode_msg(Msg, ascii) ->
 encode_msg(Msg, latin1) ->
     %% best-effort encoding
     case unicode:characters_to_binary(Msg, utf8, latin1) of
-        {_, _, Binary} ->
-            Binary;
+        {_, _, _} ->
+            Msg;
         Encoded ->
             Encoded
     end;
 encode_msg(Msg, ucs2) ->
     %% best-effort encoding
     case unicode:characters_to_binary(Msg, utf8, utf16) of
-        {_, _, Binary} ->
-            Binary;
+        {_, _, _} ->
+            Msg;
         Encoded ->
             Encoded
     end;
