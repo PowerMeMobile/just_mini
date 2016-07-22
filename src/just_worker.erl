@@ -4,6 +4,10 @@
 -include_lib("oserl/include/oserl.hrl").
 -include_lib("alley_common/include/logging.hrl").
 
+-ifdef(TEST).
+-compile(export_all).
+-endif.
+
 -behaviour(gen_server).
 
 %% API exports.
@@ -252,24 +256,24 @@ preprocess_reply(Reply, Settings) ->
         {ok, Params} ->
             {ok, ?gv(message_id, Params)};
         undefined ->
-            {error, ?ERROR_TIMEOUT, 0}; % timed out.
+            {error, ?ERROR_TIMEOUT, error_cost(?ERROR_TIMEOUT, Settings, _DefaultCost = 0)};
         {error, closed} ->
-            {error, ?ERROR_CLOSED, 0};
+            {error, ?ERROR_CLOSED, error_cost(?ERROR_TIMEOUT, Settings, _DefaultCost = 0)};
         {error, timeout} ->
-            {error, ?ERROR_TIMEOUT, 0};
+            {error, ?ERROR_TIMEOUT, error_cost(?ERROR_TIMEOUT, Settings, _DefaultCost = 0)};
         {error, Code} ->
-            {error, Code, error_cost(Code, Settings)}
+            {error, Code, error_cost(Code, Settings, _DefaultCost = 1)}
     end.
 
-error_cost(?ESME_RTHROTTLED, _Settings) ->
+error_cost(?ESME_RTHROTTLED, _Settings, _DefaultCost) ->
     0;
-error_cost(Code, Settings) ->
+error_cost(Code, Settings, DefaultCost) ->
     Terminal = lists:member(Code, ?gs(terminal_errors, Settings)),
     Discard = lists:member(Code, ?gs(discarded_errors, Settings)),
     if
         Terminal -> infinity;
         Discard  -> 0;
-        true     -> 1
+        true     -> DefaultCost
     end.
 
 %% collect replies from the clients, stop after Time or after completion.
